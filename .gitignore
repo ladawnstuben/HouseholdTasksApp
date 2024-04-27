@@ -24,7 +24,10 @@
 *.lai
 *.la
 *.a
-*.lib
+# *.lib - Commented out to use specific exclusion below
+
+# Specific .lib files to include
+!lib/vc_x64_lib/*.lib
 
 # Executables
 *.exe
