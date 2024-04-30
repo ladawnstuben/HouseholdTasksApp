@@ -57,7 +57,6 @@ namespace ChoreAppNamespace {
             : username(username), theme(validateTheme(theme)), notify(notify) {
             UpdateLastLoggedIn();
         }
-
         // Validate theme input
         static wxString validateTheme(const wxString& theme) {
             if (theme == "dark" || theme == "light") {
@@ -139,15 +138,18 @@ namespace ChoreAppNamespace {
             m_notifyCtrl = new wxCheckBox(this, wxID_ANY, wxT("Enable Notifications"), wxDefaultPosition, wxDefaultSize, wxCHK_2STATE);
             m_notifyCtrl->SetValue(m_client->getNotify());
 
+            // Add components to the sizer
             sizer->Add(m_usernameCtrl, 0, wxALL | wxEXPAND, 5);
             sizer->Add(m_themeCtrl, 0, wxALL | wxEXPAND, 5);
             sizer->Add(m_notifyCtrl, 0, wxALL, 5);
 
+            // Add OK and Cancel buttons
             auto* buttonSizer = new wxStdDialogButtonSizer();
             buttonSizer->AddButton(new wxButton(this, wxID_OK, wxT("Save")));
             buttonSizer->AddButton(new wxButton(this, wxID_CANCEL, wxT("Cancel")));
             buttonSizer->Realize();
 
+            // Add the button sizer to the main sizer
             sizer->Add(buttonSizer, 0, wxALL | wxALIGN_CENTER, 5);
             SetSizer(sizer);
 
@@ -157,11 +159,12 @@ namespace ChoreAppNamespace {
         }
 
     private:
-        Client* m_client;
-        wxTextCtrl* m_usernameCtrl;
-        wxTextCtrl* m_themeCtrl;
-        wxCheckBox* m_notifyCtrl;
+        Client* m_client;          // Pointer to the client object
+        wxTextCtrl* m_usernameCtrl;  // Text control for username
+        wxTextCtrl* m_themeCtrl;     // Theme 
+        wxCheckBox* m_notifyCtrl;    // Checkbox for notifications
 
+        // Event handlers
         void OnSave(wxCommandEvent& event) {
             m_client->setUsername(m_usernameCtrl->GetValue());
             m_client->setTheme(m_themeCtrl->GetValue());
@@ -169,6 +172,7 @@ namespace ChoreAppNamespace {
             EndModal(wxID_OK);  // Close the dialog with ID_OK
         }
 
+        // Cancel button event handler
         void OnCancel(wxCommandEvent& event) {
             EndModal(wxID_CANCEL);  // Close the dialog with ID_CANCEL
         }
@@ -182,6 +186,7 @@ namespace ChoreAppNamespace {
         int id;
         int earnings;
 
+        // wxString for GUI compatibility
         wxString name;
         wxString description;
         wxString frequency;
@@ -189,6 +194,7 @@ namespace ChoreAppNamespace {
         wxString notes;
         wxString location;
 
+        // Vector of wxString for GUI compatibility
         vector<wxString> tags;
         vector<wxString> tools_required;
         vector<wxString> materials_needed;
@@ -196,11 +202,13 @@ namespace ChoreAppNamespace {
         // Adding callback function for status change
         function<void()> onUpdate;
 
+        // Enumerations for difficulty, status, and priority
         DIFFICULTY difficulty;
         STATUS status;
         PRIORITY priority;
 
     public:
+        // Constructor to initialize the Chore object
         Chore(const json& j, std::function<void()> callback = nullptr) : onUpdate(callback) {
             id = j["id"].is_null() ? -1 : j["id"].get<int>();
             name = j["name"].is_null() ? wxString("") : wxString(j["name"].get<std::string>());
@@ -475,6 +483,7 @@ namespace ChoreAppNamespace {
         // Friend declaration for operator<<
         friend ostream& operator<<(ostream& os, const Chore& chore);
 
+        // Operator overloading for equality comparison
         virtual bool operator==(const Chore& other) const {
             // Check equality of all member variables
             return (this->id == other.id &&
@@ -493,19 +502,19 @@ namespace ChoreAppNamespace {
                 this->status == other.status &&
                 this->priority == other.priority);
         }
-
+        // Comparison operators for sorting earnings
         struct CompareEarnings {
             bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
                 return a->getEarnings() < b->getEarnings();
             }
         };
-
+        // Comparison operators for sorting difficulty
         struct CompareDifficulty {
             bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
                 return a->getDifficulty() < b->getDifficulty(); // Make sure Difficulty is comparable
             }
         };
-
+        // Comparison operators for sorting ID
         struct CompareID {
             bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
                 return a->getId() < b->getId();
@@ -513,6 +522,7 @@ namespace ChoreAppNamespace {
         };
 
     protected:
+        // Helper function to format a vector of strings for display
         static wxString formatVector(const vector<wxString>& vec) {
             wxString result;
             for (const auto& item : vec) {
@@ -606,126 +616,360 @@ namespace ChoreAppNamespace {
         }
 
     };
+    //*************************************************************************************************************************
+  // Create the ChoreDoer class
+    class ChoreDoer {
+    public:
+        vector<shared_ptr<Chore>> assignedChores;
+        wxString name;
+        int choreAmount;
+        int age;
+        int totalEarnings;
 
+        // Constructor to initialize the ChoreDoer object
+        ChoreDoer(const wxString& name, int age) : name(name), age(age), choreAmount(0), totalEarnings(0) {}
+
+        // Method to assign a chore to the ChoreDoer
+        void assignChore(const shared_ptr<Chore>& chore) {
+            assignedChores.push_back(chore);
+            choreAmount++;
+        }
+
+        wxString getName() const {
+            return name;
+        }
+
+        int getTotalEarnings() const {
+            return totalEarnings;
+        }
+
+        int getChoreAmount() const {
+            return choreAmount;
+        }
+
+        // Method to display the ChoreDoer details
+        wxString printChoreDoer() const {
+            wxString result = "Chore Doer: " + name + "\n";
+            result += "Total Earnings: $" + wxString::Format(wxT("%d"), totalEarnings) + "\n";
+            result += "Chore Amount: " + wxString::Format(wxT("%d"), choreAmount) + "\n";
+            return result;
+        }
+
+        // method to start a chore
+        void startChore(int choreId, wxWindow* parent) {
+            for (auto& chore : assignedChores) {
+                if (chore->getId() == choreId && (chore->getStatus() == STATUS::NOT_STARTED)) {
+                    chore->startChore(parent);
+                    return;
+                }
+            }
+        }
+
+
+        // method to complete a chore
+        void completeChore(int choreId, wxWindow* parent) {
+            for (auto& chore : assignedChores) {
+                if (chore->getId() == choreId && (chore->getStatus() == STATUS::IN_PROGRESS || chore->getStatus() == STATUS::NOT_STARTED)) {
+                    chore->completeChore(parent);
+                    totalEarnings += chore->getEarnings();
+                    wxMessageBox(wxString::Format("Chore %s completed. Total earnings now: $%d", chore->getName(), totalEarnings), "Chore Completed", wxOK | wxICON_INFORMATION, parent);
+                    break;
+                }
+                else {
+                    wxMessageBox("Chore is already completed or not started.", "No Action Taken", wxOK | wxICON_INFORMATION, parent);
+                }
+            }
+        }
+
+
+        // method to reset a chore
+        void resetChore(int choreId, wxWindow* parent) {
+            for (auto& chore : assignedChores) {
+                if (chore->getId() == choreId && (chore->getStatus() == STATUS::COMPLETED || chore->getStatus() == STATUS::IN_PROGRESS)) {
+                    chore->resetChore(parent);
+                    wxMessageBox(wxString::Format("Resetting Chore: %s", chore->getName()), "Chore Reset", wxOK | wxICON_INFORMATION, parent);
+                }
+                else {
+                    wxMessageBox("Chore is already in the initial state (Not Started) or does not exist.", "Reset Unnecessary", wxOK | wxICON_INFORMATION, parent);
+                }
+            }
+        }
+    };
+    //*********************************************************************************************************************
     // create the ChoreManager class
     class ChoreManager {
     private:
         json j;
-        std::vector<std::shared_ptr<Chore>> chores;
+        vector<shared_ptr<Chore>> chores;
+        vector<shared_ptr<ChoreDoer>> doers;
         wxString dynamicFile;
         Client* client = nullptr;  // Initialize to nullptr to clearly indicate no client initially
 
 
     public:
-        ChoreManager(const wxString& fileName) {
-            dynamicFile = fileName;
-            std::ifstream file(fileName.ToStdString());
-            if (file.is_open()) {
-                try {
-                    j = json::parse(file);
-                    file.close();
-                }
-                catch (const json::parse_error& e) {
-                    wxMessageBox("JSON Parsing Error:" + wxString(e.what()), "JSON Error", wxOK | wxICON_ERROR);
-                    return;
-                }
-
-                // Check for user profile and create Client
-                if (j.contains("user_profile") && !j["user_profile"].is_null()) {
-                    auto userProfile = j["user_profile"];
-                    wxString username = userProfile.value("username", "defaultUser");
-                    wxString theme = userProfile.value("theme", "light");
-                    bool notify = userProfile.value("notify", false);
-
-                    client = new Client(username, theme, notify);  // Correctly create a new Client instance
-                }
-                else {
-                    // Default client if no profile is specified
-                    client = new Client("defaultUser", "light", false);
-                }
-
-                loadChores();
-            }
-            else {
-                wxMessageBox("Error opening file: " + fileName, "File Error", wxOK | wxICON_ERROR);
-            }
+        // Constructor to initialize the ChoreManager object
+        ChoreManager(const wxString& fileName) : dynamicFile(fileName) {
+            loadData();
         }
-
+        // Destructor to save data when the object is destroyed
         ~ChoreManager() {
             saveData();
         }
+
+        // Method to load data from the JSON file
+        void loadData() {
+            std::ifstream file(dynamicFile.ToStdString());
+            if (!file) {
+                wxMessageBox("Error opening file: " + dynamicFile, "File Error", wxOK | wxICON_ERROR);
+                j = json::object(); // Initialize an empty JSON object if file fails to open
+                return;
+            }
+
+            try {
+                j = json::parse(file);
+            }
+            catch (const json::parse_error& e) {
+                wxMessageBox("JSON Parsing Error: " + wxString(e.what()), "JSON Error", wxOK | wxICON_ERROR);
+                j = json::object(); // Initialize an empty JSON object if parsing fails
+            }
+            file.close();
+            // Load client from JSON
+            if (j.contains("user_profile") && !j["user_profile"].is_null()) {
+                auto userProfile = j["user_profile"];
+                wxString username = userProfile.value("username", "defaultUser");
+                wxString theme = userProfile.value("theme", "light");
+                bool notify = userProfile.value("notify", false);
+                client = new Client(username, theme, notify);
+            }
+            else {
+                client = new Client("defaultUser", "light", false);
+            }
+            // call loadChores method
+            loadChores();
+        }
+
+        // Method to load chores from the JSON file
         void loadChores() {
             if (j.contains("chores") && j["chores"].is_array()) {
+                chores.clear(); // Clear existing chores before loading new ones
                 for (const auto& choreJson : j["chores"]) {
                     auto chore = std::make_shared<Chore>(choreJson);
                     chores.push_back(chore);
                 }
             }
         }
+
+        // Method to load chore doers from the JSON file
+        void addChoreDoer(const wxString& name, int age) {
+            auto doer = std::make_shared<ChoreDoer>(name, age);
+            doers.push_back(doer);
+        }
+
+        // Method to assign a chore to a ChoreDoer
+        void assignChoreDoer(int choreId, const wxString& doerName) {
+            auto chore = find_if(chores.begin(), chores.end(), [choreId](const shared_ptr<Chore>& c) {
+                return c->getId() == choreId;
+                });
+            if (chore != chores.end()) {
+                auto doer = find_if(doers.begin(), doers.end(), [doerName](const shared_ptr<ChoreDoer>& d) {
+                    return d->getName() == doerName;
+                    });
+
+                if (doer != doers.end()) {
+                    (*doer)->assignChore(*chore);
+                }
+                else {
+                    wxLogError("ChoreDoer %s not found.", doerName);
+                }
+            }
+            else {
+                wxLogError("Chore ID %d not found.", choreId);
+            }
+        }
+
+        // Method to display the ChoreDoer details
+        wxString displayAssignedChores(const wxString& doerName) {
+            auto doer = std::find_if(doers.begin(), doers.end(), [&doerName](const std::shared_ptr<ChoreDoer>& d) {
+                return d->name == doerName;
+                });
+
+            if (doer != doers.end()) {
+                return (*doer)->printChoreDoer();
+            }
+
+            return "Chore Doer not found.";
+        }
+
+
+        // Method to add a new chore to the list
         void addChore(const json& choreJson) {
             if (!choreJson.is_null()) {
                 auto chore = std::make_shared<Chore>(choreJson);
                 chores.push_back(chore);
+                saveData();  // Save every time a chore is added
             }
             else {
                 wxMessageBox("Error adding chore: Invalid JSON", "JSON Error", wxOK | wxICON_ERROR);
-
             }
         }
+        // saveData method to save the data to the JSON file
         void saveData() {
-			json j;
-			if (client) {
-				j["user_profile"] = {
-					{"username", client->getUsername().ToStdString()},
-					{"theme", client->getTheme().ToStdString()},
-					{"notify", client->getNotify()}
-				};
-			}
-			json choresJson = json::array();
-			for (const auto& chore : chores) {
-				choresJson.push_back(chore->toJSON());
-			}
-			j["chores"] = choresJson;
-
-			std::ofstream file(dynamicFile.ToStdString());
-			if (file.is_open()) {
-				file << std::setw(4) << j << std::endl;
-				file.close();
-			}
-			else {
-				wxMessageBox("Error saving file: " + dynamicFile, "File Error", wxOK | wxICON_ERROR);
-			}
-		}
-
-        void displayChores() {
-            wxString info;
-            for (const auto& chore : chores) {
-                info += "Chore: " + wxString(chore->getName()) + " (ID: " + wxString::Format(wxT("%d"), chore->getId()) + ")\n";
+            json j;
+            if (client) {
+                j["user_profile"] = {
+                    {"username", client->getUsername().ToStdString()},
+                    {"theme", client->getTheme().ToStdString()},
+                    {"notify", client->getNotify()}
+                };
             }
-            wxMessageBox(info, "Chore List", wxOK | wxICON_INFORMATION);
+
+            json choresJson = json::array();
+            for (const auto& chore : chores) {
+                choresJson.push_back(chore->toJSON());
+            }
+            j["chores"] = choresJson;
+
+            std::ofstream file(dynamicFile.ToStdString());
+            if (file) {
+                file << std::setw(4) << j << std::endl;
+            }
+            else {
+                wxMessageBox("Error saving file: " + dynamicFile, "File Error", wxOK | wxICON_ERROR);
+            }
+            file.close();
         }
+
+        // Method to display the client profile
+        bool userExists(const wxString& username) {
+            return j["user_profiles"].find(username.ToStdString()) != j["user_profiles"].end();
+        }
+
+        // Method to create a new user profile
+        void createUser(const wxString& username, const wxString& theme, bool notify) {
+            json newUser = {
+                {"username", username.ToStdString()},
+                {"theme", theme.ToStdString()},
+                {"notify", notify}
+            };
+            j["user_profiles"][username.ToStdString()] = newUser;
+            saveData();
+        }
+
+        // Method to update the user profile
+        void updateUser(const wxString& username, const wxString& theme, bool notify) {
+            j["user_profiles"][username.ToStdString()] = {
+                {"username", username.ToStdString()},
+                {"theme", theme.ToStdString()},
+                {"notify", notify}
+            };
+            saveData();
+        }
+
+        // don't think we need this
+        bool validateUser(wxString w, wxString z) {
+            return true; // Placeholder for actual validation logic
+        }
+
+        // Method to display the chore list
+        //******************************************************************
+        //CHANGED DISPLAY CHORES TO WORK WITH WXWIDGETS (void function not allowed)
+        vector<shared_ptr<Chore>> displayChores()
+        {
+            vector<shared_ptr<Chore>> choreList;
+            for (const auto& chore : chores)
+            {
+                choreList.push_back(chore);
+            }
+            return choreList;
+        }
+        //void displayChores() {
+        //    wxString info;
+        //    for (const auto& chore : chores) {
+        //        info += "Chore: " + chore->getName() + " (ID: " + wxString::Format(wxT("%d"), chore->getId()) + ")\n";
+        //    }
+        //    wxMessageBox(info, "Chore List", wxOK | wxICON_INFORMATION);
+        //}
+
+    };
+    //*******************************************
+    //CREATED CHORES FRAME TO DEAL WITH WHEN VIEW CHORE IS SELECTED
+    //this frame is called in event.getid == 1... will display clickable chores
+    class ChoresFrame : public wxFrame {
+    public:
+        ChoresFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
+
+    private:
+        void OnChoreSelected(wxCommandEvent& event);
     };
 
-	// Create the subclass of wxFrame
-	// MyFrame serves as the main frame for the application
+    ChoresFrame::ChoresFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
+        : wxFrame(NULL, wxID_ANY, title, pos, size) {
+        ChoreManager choreManager(DATA_FILE_PATH + "data.json");
+        wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+        wxChoice* choice = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
+
+        choice->Append("Select Chore");
+
+        // Loading chores into the choice menu
+        for (const auto& chore : choreManager.displayChores()) {
+            choice->Append(chore->getName());
+        }
+
+        sizer->Add(choice, 1, wxEXPAND | wxALL, 5);
+        SetSizerAndFit(sizer);
+
+        //even handler for the clickable menu
+        choice->Bind(wxEVT_CHOICE, &ChoresFrame::OnChoreSelected, this);
+    }
+    //while in the clickablbe menu.. here is where more information will be displayed on click
+    // im thinking .... description... earnings...difficulty? maybe 
+    void ChoresFrame::OnChoreSelected(wxCommandEvent& event) {
+        int selection = event.GetInt();
+        //each selection corresponds with its index.. 0 is Select chore.. and so on
+        if (selection == 0) {
+            //just a test message to verify it worked
+            wxMessageBox("this worked", "chore 1", wxOK | wxICON_INFORMATION);
+            return;
+        }
+
+        //chore selected displayed
+        wxString selectedChore = event.GetString();
+        wxMessageBox("Selected Chore: " + selectedChore, "Chore Selected", wxOK | wxICON_INFORMATION);
+    }
+
+    //**********************************************************************************************
+        // Create the subclass of wxFrame
+        // MyFrame serves as the main frame for the application
     class MyFrame : public wxFrame {
     public:
+        // Constructor to initialize the frame
         MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
 
     private:
-        void CreateMenu();
-        void CreateControls();
-        void OnExit(wxCommandEvent& event);
-        void OnAbout(wxCommandEvent& event);
-        void OnButtonClick(wxCommandEvent& event);
+        void CreateMenu();                // Method to create the menu
+        void CreateControls();               // Method to create the controls
+        void OnExit(wxCommandEvent& event);    // Event handler for the Exit menu item
+        void OnAbout(wxCommandEvent& event);     // Event handler for the About menu item
+        void OnButtonClick(wxCommandEvent& event);   // Event handler for the button click
+        //******************************************
+        void OnClick(wxCommandEvent& event); //onclick added
     };
-
+    //**************************************************
+    //ID_SORT_CHORES will be an enum
+    //ID_SEARCH_CHORES will be an enum
+    enum
+    {
+        ID_VIEW_CHORES = 1,     // 1 will be passed in void call to onclick
+        ID_SORT_CHORES = 2,
+        ID_SEARCH_CHORES = 3
+    };
+    // Create the subclass of wxApp
     MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
         : wxFrame(nullptr, wxID_ANY, title, pos, size) {
         CreateMenu();
         CreateControls();
     }
-
+    // Method to create the menu
     void MyFrame::CreateMenu() {
         // Creating menu items
         wxMenu* menuFile = new wxMenu;
@@ -733,11 +977,18 @@ namespace ChoreAppNamespace {
 
         wxMenu* menuHelp = new wxMenu;
         menuHelp->Append(wxID_ABOUT, "About");
+        //making a chore menu
+        wxMenu* menuChore = new wxMenu;
+        menuChore->Append(wxID_ANY, "Add Chore");
+        //****************************************************
+        menuChore->Append(ID_VIEW_CHORES, "View Chores"); // changed from wxID_ANY to ID_VIEW so OnClick will associate with it.
+        menuChore->Append(wxID_ANY, "Edit Chore");
 
         // Adding menus to the menu bar
         wxMenuBar* menuBar = new wxMenuBar;
-        menuBar->Append(menuFile, "&File");
-        menuBar->Append(menuHelp, "&Help");
+        menuBar->Append(menuFile, "File");
+        menuBar->Append(menuHelp, "Help");
+        menuBar->Append(menuChore, "Chore");
 
         // Setting the menu bar to the frame
         SetMenuBar(menuBar);
@@ -745,8 +996,11 @@ namespace ChoreAppNamespace {
         // Binding events to their handlers
         Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
         Bind(wxEVT_MENU, &MyFrame::OnAbout, this, wxID_ABOUT);
+        //Binding control click**********************************************
+        //bind for ID_VIEW_CHORES
+        Bind(wxEVT_MENU, &MyFrame::OnClick, this, ID_VIEW_CHORES);
     }
-
+    // Method to create the controls
     void MyFrame::CreateControls() {
         wxPanel* panel = new wxPanel(this);
         wxBoxSizer* vboxSizer = new wxBoxSizer(wxVERTICAL);
@@ -763,11 +1017,11 @@ namespace ChoreAppNamespace {
         button->Bind(wxEVT_BUTTON, &MyFrame::OnButtonClick, this);
     }
 
-
+    // Event handler for the Exit menu item
     void MyFrame::OnExit(wxCommandEvent& event) {
         Close(true);  // Close the frame
     }
-
+    // Event handler for the About menu item
     void MyFrame::OnAbout(wxCommandEvent& event) {
         wxMessageBox("This is a wxWidgets application for managing chores.", "About Chore Manager", wxOK | wxICON_INFORMATION);
     }
@@ -777,59 +1031,113 @@ namespace ChoreAppNamespace {
         wxMessageBox("Button clicked!", "Event", wxOK | wxICON_INFORMATION);
     }
 
+    //when menu item is clicked**********************************************
+    //will make a sort and search that aligns with getid() 2  and 3
+    void MyFrame::OnClick(wxCommandEvent& event)
+    {
 
-// Create the subclass of wxApp
-// ChoreApp serves as the application object
-class ChoreApp : public wxApp {
-public:
-    virtual bool OnInit() {
-        // Load user profile from the JSON file
-		ChoreManager choreManager(DATA_FILE_PATH + "data.json");
-        // Create and show the login dialog
-        // This isn't working yet
-      //  LoginDialog* loginDlg = new LoginDialog(nullptr, client);
-     //   if (loginDlg->ShowModal() == wxID_OK) {
-            // User logged in successfully
-      //      client->UpdateLastLoggedIn();
-            // Save the updated client data back to the JSON file
-		//	choreManager.saveData();
+        if (event.GetId() == 1)
+        {
+            //this transfers control to the frame created ChoresFrame....it has its own binding event for when a chore is clicked
+            ChoresFrame* choresFrame = new ChoresFrame("SELECT CHORE", wxDefaultPosition, wxSize(300, 200));
+            choresFrame->Show(true);
 
-     //   }
-    //    else {
-            // User cancelled the login
-       //     return false; // Exit application
-     //   }
-     //   loginDlg->Destroy();
-
-		// Create and show the main frame
-        MyFrame* frame = new MyFrame("Chore Manager", wxPoint(50, 50), wxSize(450, 340));
-        frame->Show(true);
-        return true;
+        }
+        else if (event.GetId() == 2)
+        {
+            //SORT CHORES USED 
+        }
+        else if (event.GetId() == 3)
+        {
+            //SEARCH CHORES USED
+        }
     }
-    // This would be a new class for the login dialog
-    class LoginDialog : public wxDialog {
+    // Create the subclass of wxApp
+    // ChoreApp serves as the application object
+    class ChoreApp : public wxApp {
     public:
-        LoginDialog(wxWindow* parent, Client* client)
-            : wxDialog(parent, wxID_ANY, wxT("Login"), wxDefaultPosition, wxDefaultSize) {
-            // Setup UI components for login
-			auto* sizer = new wxBoxSizer(wxVERTICAL);
-			auto* usernameLabel = new wxStaticText(this, wxID_ANY, wxT("Username:"));
-			auto* usernameText = new wxTextCtrl(this, wxID_ANY, client->getUsername());
-            // no passwords
-			auto* loginButton = new wxButton(this, wxID_OK, wxT("Login"));
+        virtual bool OnInit() {
+            // Load user profile from the JSON file
 
+            ChoreManager choreManager(DATA_FILE_PATH + "data.json");   // Create a ChoreManager object and path to the JSON file
+            LoginDialog* loginFrame = new LoginDialog(nullptr, &choreManager);     // Create a login dialog
+            loginFrame->ShowModal();                                            // Show the login dialog
+
+            // Create and show the main frame
+            MyFrame* frame = new MyFrame("Chore Manager", wxPoint(50, 50), wxSize(450, 340));
+            frame->Show(true);
+            return true;
         }
-    private:
-        // Event handler for when the "Login" button is clicked
-        void OnLogin(wxCommandEvent& event) {
-            // Code to validate login credentials
-            // ...
-        }
+
+        // Update in ChoreApp to handle user login and new user creation
+        class LoginDialog : public wxDialog {
+        public:
+            // Constructor to initialize the login dialog
+            LoginDialog(wxWindow* parent, ChoreManager* choreManager)
+                : wxDialog(parent, wxID_ANY, wxT("Login or Register"), wxDefaultPosition, wxDefaultSize),
+                m_choreManager(choreManager) {
+                // Setup UI components for login
+                auto* sizer = new wxBoxSizer(wxVERTICAL);
+                auto* usernameLabel = new wxStaticText(this, wxID_ANY, wxT("Username:"));
+                m_usernameText = new wxTextCtrl(this, wxID_ANY);
+                auto* themeLabel = new wxStaticText(this, wxID_ANY, wxT("Choose theme:"));
+                // Theme choices
+                wxArrayString themeChoices;
+                themeChoices.Add("light");
+                themeChoices.Add("dark");
+                m_themeChoice = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, themeChoices);
+                m_themeChoice->SetSelection(0);  // Default to 'light'
+                // Notification checkbox
+                auto* notifyLabel = new wxStaticText(this, wxID_ANY, wxT("Enable notifications:"));
+                m_notifyCheckBox = new wxCheckBox(this, wxID_ANY, wxT(""));
+
+                // Login button
+                auto* loginButton = new wxButton(this, wxID_OK, wxT("Login or Register"));
+
+                // Add components to sizer
+                sizer->Add(usernameLabel, 0, wxALL, 5);
+                sizer->Add(m_usernameText, 0, wxEXPAND | wxALL, 5);
+                sizer->Add(themeLabel, 0, wxALL, 5);
+                sizer->Add(m_themeChoice, 0, wxEXPAND | wxALL, 5);
+                sizer->Add(notifyLabel, 0, wxALL, 5);
+                sizer->Add(m_notifyCheckBox, 0, wxALL, 5);
+                sizer->Add(loginButton, 0, wxALIGN_CENTER | wxALL, 5);
+
+                // Set sizer for the dialog
+                SetSizer(sizer);
+
+                // Bind login button click event
+                loginButton->Bind(wxEVT_BUTTON, &LoginDialog::OnLogin, this);
+            }
+
+
+        private:
+            ChoreManager* m_choreManager;       // Pointer to the ChoreManager object
+            wxTextCtrl* m_usernameText;         // Text control for username
+            wxChoice* m_themeChoice;             // Choice control for theme
+            wxCheckBox* m_notifyCheckBox;        // Checkbox for notifications
+
+            // Event handler for the login button
+            void OnLogin(wxCommandEvent& event) {
+                wxString username = m_usernameText->GetValue();
+                wxString theme = m_themeChoice->GetStringSelection();
+                bool notify = m_notifyCheckBox->IsChecked();
+
+                if (!m_choreManager->userExists(username)) {
+                    m_choreManager->createUser(username, theme, notify);
+                    wxMessageBox("New user created: " + username + ". Welcome to Chore Manager!", "User Created", wxOK | wxICON_INFORMATION);
+                }
+                else {
+                    m_choreManager->updateUser(username, theme, notify);
+                    wxMessageBox("Welcome back, " + username + "!", "Login Success", wxOK | wxICON_INFORMATION);
+                }
+
+                // Close the dialog
+                EndModal(wxID_OK);
+            }
+        };
     };
-};
 
 }
 
 wxIMPLEMENT_APP(ChoreAppNamespace::ChoreApp);  // This macro creates the main() function for the application
-
-  
