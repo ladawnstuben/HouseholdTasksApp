@@ -253,7 +253,7 @@ namespace ChoreAppNamespace {
             }
         }
         // startChore method using wxTextEntryDialog instead of standard input
-        void startChore(wxWindow* parent) {
+        virtual void startChore(wxWindow* parent) {
             wxString message;
             if (status == STATUS::NOT_STARTED) {
                 message = "In Progress: " + wxString(name);
@@ -271,7 +271,7 @@ namespace ChoreAppNamespace {
         }
 
         // completeChore method using wxTextEntryDialog instead of standard input
-        void completeChore(wxWindow* parent) {
+        virtual void completeChore(wxWindow* parent) {
             wxString message;
             if (status == STATUS::NOT_STARTED) {
                 message = "Cannot complete an unstarted chore: " + wxString(name);
@@ -288,7 +288,7 @@ namespace ChoreAppNamespace {
         }
 
         // resetChore method using wxTextEntryDialog instead of standard input
-        void resetChore(wxWindow* parent) {
+        virtual void resetChore(wxWindow* parent) {
             wxString message;
             if (status == STATUS::NOT_STARTED) {
                 message = "Chore not started: " + wxString(name);
@@ -301,7 +301,7 @@ namespace ChoreAppNamespace {
             triggerUpdate();  // Trigger any GUI updates if linked
         }
         // toJson method to serialize the Chore class object into a JSON format
-        json toJSON() const {
+        virtual json toJSON() const {
             return json{
                 {"id", id},
                 {"name", name},
@@ -321,7 +321,7 @@ namespace ChoreAppNamespace {
             };
         }
         // prettyPrint method to display the Chore class object in a readable format
-        wxString PrettyPrintClassAttributes() const {
+        virtual wxString PrettyPrintClassAttributes() const {
             wxString result = "Chore ID: " + to_string(id) + "\n"
                 + "Name: " + name.ToStdString() + "\n"  // Convert wxString to std::string
                 + "Description: " + description.ToStdString() + "\n"  // Convert wxString to std::string
@@ -617,10 +617,312 @@ namespace ChoreAppNamespace {
 
     };
     //*************************************************************************************************************************
+  // Create the EasyChore class
+    // Inherits from the Chore class
+    class EasyChore : public Chore {
+    private:
+      wxString multitasking_tips; // Stores tips for multitasking while performing the chore
+
+    public:
+      // Constructor initializes EasyChore with JSON data, calling the base Chore constructor
+      EasyChore(const json& j) : Chore(j) {
+        // Retrieves multitasking tips from JSON and initializes the wxString
+        multitasking_tips = j["multitasking_tips"].is_null() ? wxT("") : wxString(j["multitasking_tips"].get<std::string>());
+      }
+
+      // Override the startChore function for GUI-specific actions
+      void startChore(wxWindow* parent) override {
+        // Display a start message using a GUI message box
+        wxMessageBox(wxT("Starting easy chore: "), wxT("Chore Start"), wxOK | wxICON_INFORMATION, parent);
+        // Call the base class startChore to perform any additional actions
+        Chore::startChore(parent);
+        // Display multitasking tips in a message box
+        wxMessageBox(wxT("Multitasking Tips: ") + multitasking_tips, wxT("Tips"), wxOK | wxICON_INFORMATION, parent);
+      }
+
+      // Override the completeChore function for GUI-specific actions
+      void completeChore(wxWindow* parent) override {
+        // Display a completion message using a GUI message box
+        wxMessageBox(wxT("Completing easy chore: "), wxT("Chore Completion"), wxOK | wxICON_INFORMATION, parent);
+        // Call the base class completeChore to perform any additional actions
+        Chore::completeChore(parent);
+      }
+
+      // Override the resetChore function for GUI-specific actions
+      void resetChore(wxWindow* parent) override {
+        // Call the base class resetChore to reset chore status
+        Chore::resetChore(parent);
+      }
+
+      // Override to provide a string representation of class attributes for debugging and display
+      wxString PrettyPrintClassAttributes() const override {
+        // Combine base class attributes with multitasking tips
+        return Chore::PrettyPrintClassAttributes() +
+          wxT("\nMultitasking Tips: ") + multitasking_tips;
+      }
+
+      // Override to serialize object data to JSON
+      json toJSON() const override {
+        // Start with base class JSON
+        json j = Chore::toJSON();
+        // Add multitasking tips to JSON
+        j["multitasking_tips"] = std::string(multitasking_tips.mb_str());
+        return j;
+      }
+    };
+
+    //*************************************************************************************************************************
+  // Create the MediumChore class
+    // Inherits from the Chore class
+    class MediumChore : public Chore {
+    private:
+      vector<wxString> variations; // Stores variations of the medium chore
+
+    public:
+      // Constructor initializes MediumChore with JSON data, calling the base Chore constructor
+      MediumChore(const json& j) : Chore(j) {
+        // Retrieves variations from JSON and initializes the vector of wxStrings
+        variations = j["variations"].is_null() ? vector<wxString>() : parseVectorWXString(j["variations"]);
+      }
+
+      // Override the startChore function for GUI-specific actions
+      void startChore(wxWindow* parent) override {
+        // Display a start message using a GUI message box
+        wxMessageBox(wxT("Starting medium chore: "), wxT("Chore Start"), wxOK | wxICON_INFORMATION, parent);
+        // Call the base class startChore to perform any additional actions
+        Chore::startChore(parent);
+        // Prepare and display variations available as a formatted string
+        wxString variationStr = formatVector(variations);
+        wxMessageBox(wxT("Variations available: ") + variationStr, wxT("Variations"), wxOK | wxICON_INFORMATION, parent);
+      }
+
+      // Override the completeChore function for GUI-specific actions
+      void completeChore(wxWindow* parent) override {
+        // Display a completion message using a GUI message box
+        wxMessageBox(wxT("Completing medium chore: "), wxT("Chore Completion"), wxOK | wxICON_INFORMATION, parent);
+        // Call the base class completeChore to perform any additional actions
+        Chore::completeChore(parent);
+      }
+
+      // Override the resetChore function for GUI-specific actions
+      void resetChore(wxWindow* parent) override {
+        // Call the base class resetChore to reset chore status
+        Chore::resetChore(parent);
+      }
+
+      // Override to provide a string representation of class attributes for debugging and display
+      wxString PrettyPrintClassAttributes() const override {
+        // Combine base class attributes with chore variations
+        return Chore::PrettyPrintClassAttributes() +
+          wxT("\nVariations: ") + formatVector(variations);
+      }
+
+      // Override to serialize object data to JSON
+      json toJSON() const override {
+        // Start with base class JSON
+        json j = Chore::toJSON();
+        // Convert variations to a vector of std::string for JSON serialization
+        std::vector<std::string> variationsStr;
+        for (const auto& v : variations) {
+          variationsStr.push_back(std::string(v.mb_str()));
+        }
+        j["variations"] = variationsStr;
+        return j;
+      }
+    };
+
+    //*************************************************************************************************************************
+  // Create the HardChore class
+    // Inherits from the Chore class
+    class HardChore : public Chore {
+    private:
+      struct Subtask {
+        wxString name;               // Name of the subtask
+        wxString estimated_time;     // Estimated time to complete the subtask
+        int earnings;                // Earnings from the subtask
+
+        // Constructor initializes Subtask with JSON data
+        Subtask(const json& subtaskJson) :
+          name(subtaskJson["name"].is_null() ? wxT("") : wxString(subtaskJson["name"].get<std::string>())),
+          estimated_time(subtaskJson["estimated_time"].is_null() ? wxT("") : wxString(subtaskJson["estimated_time"].get<std::string>())),
+          earnings(subtaskJson["earnings"].is_null() ? 0 : subtaskJson["earnings"].get<int>()) {}
+      };
+
+      vector<Subtask> subtasks; // Stores subtasks associated with the hard chore
+
+    public:
+      // Constructor initializes HardChore with JSON data, calling the base Chore constructor
+      HardChore(const json& j) : Chore(j) {
+        // Populate subtasks vector from JSON array of subtasks
+        for (const auto& subtaskJson : j["subtasks"].is_array() ? j["subtasks"] : json::array()) {
+          subtasks.push_back(Subtask(subtaskJson));
+        }
+      }
+
+      // Override the startChore function for GUI-specific actions
+      void startChore(wxWindow* parent) override {
+        // Display a start message using a GUI message box
+        wxMessageBox(wxT("Starting hard chore: "), wxT("Chore Start"), wxOK | wxICON_INFORMATION, parent);
+        // Call the base class startChore to perform any additional actions
+        Chore::startChore(parent);
+        // Display subtask details using a message box
+        wxString subtaskDetails;
+        for (const auto& subtask : subtasks) {
+          subtaskDetails += wxT("Subtask: ") + subtask.name + wxT(", Time: ") + subtask.estimated_time + wxT(", Earnings: $") + wxString::Format(wxT("%d"), subtask.earnings) + wxT("\n");
+        }
+        wxMessageBox(subtaskDetails, wxT("Subtask Details"), wxOK | wxICON_INFORMATION, parent);
+      }
+
+      // Override the completeChore function for GUI-specific actions
+      void completeChore(wxWindow* parent) override {
+        // Display a completion message using a GUI message box
+        wxMessageBox(wxT("Completing hard chore: "), wxT("Chore Completion"), wxOK | wxICON_INFORMATION, parent);
+        // Call the base class completeChore to perform any additional actions
+        Chore::completeChore(parent);
+      }
+
+      // Override the resetChore function for GUI-specific actions
+      void resetChore(wxWindow* parent) override {
+        // Call the base class resetChore to reset chore status
+        Chore::resetChore(parent);
+      }
+
+      // Override to provide a string representation of class attributes for debugging and display
+      wxString PrettyPrintClassAttributes() const override {
+        wxString result = Chore::PrettyPrintClassAttributes();
+        for (const auto& subtask : subtasks) {
+          result += wxT("\nSubtask: ") + subtask.name + wxT(", Time: ") + subtask.estimated_time + wxT(", Earnings: $") + wxString::Format(wxT("%d"), subtask.earnings);
+        }
+        return result;
+      }
+
+      // Override to serialize object data to JSON
+      json toJSON() const override {
+        json j = Chore::toJSON();
+        json subtasksJson = json::array();
+        for (const auto& subtask : subtasks) {
+          json stJson;
+          stJson["name"] = std::string(subtask.name.mb_str());
+          stJson["estimated_time"] = std::string(subtask.estimated_time.mb_str());
+          stJson["earnings"] = subtask.earnings;
+          subtasksJson.push_back(stJson);
+        }
+        j["subtasks"] = subtasksJson;
+        return j;
+      }
+    };
+
+    //*************************************************************************************************************************
+  // Create the Templated Container class
+    template<typename T>
+    class Container {
+    private:
+      vector<shared_ptr<T>> items;
+
+    public:
+      // Generic bubble sort using comparator
+      template<typename Comparator>
+      void sortItems(Comparator comp, bool ascending = true) {
+        try {
+          bool swapped;
+          do {
+            swapped = false;
+            for (size_t i = 1; i < items.size(); i++) {
+              if ((ascending && comp(items[i - 1], items[i])) || (!ascending && comp(items[i], items[i - 1]))) {
+                swap(items[i - 1], items[i]);
+                swapped = true;
+              }
+            }
+          } while (swapped);
+        }
+        catch (const exception& e) {
+          wxMessageBox(wxString("Exception thrown in sortItems: ") + wxString(e.what()), wxT("Error"), wxOK | wxICON_ERROR);
+        }
+      }
+
+      void moveItemToAnotherContainer(int id, Container<T>& destination) {
+        bool found = false;
+        for (auto it = items.begin(); it != items.end(); ++it) {
+          if ((*it)->getID() == id) {
+            destination.items.push_back(*it);  // Add to destination
+            wxMessageBox(wxString("Chore moved successfully: ") + (*it)->getName(), wxT("Info"), wxOK | wxICON_INFORMATION);
+            items.erase(it);  // Remove from source
+            found = true;
+            break;  // Stop after finding and moving the item
+          }
+        }
+
+        if (!found) {
+          wxMessageBox(wxT("Chore not found."), wxT("Info"), wxOK | wxICON_INFORMATION);
+        }
+      }
+
+      void deleteItem(int id) {
+        auto it = find_if(items.begin(), items.end(), [id](const shared_ptr<T>& item) { return item->getID() == id; });
+        if (it != items.end()) {
+          items.erase(it);
+          wxMessageBox(wxString("Chore deleted successfully."), wxT("Info"), wxOK | wxICON_INFORMATION);
+        }
+        else {
+          wxMessageBox(wxT("Chore not found."), wxT("Error"), wxOK | wxICON_ERROR);
+        }
+      }
+
+      void push_back(const shared_ptr<T>& item) {
+        items.push_back(item);
+      }
+
+      size_t size() const {
+        return items.size();
+      }
+
+      shared_ptr<T>& operator[](size_t index) {
+        return items[index];
+      }
+
+      void display(wxWindow* parent) const {
+        wxString info;
+        for (const auto& item : items) {
+          info += wxString("Chore: ") + item->getName() + " (ID: " + wxString::Format(wxT("%d"), item->getID()) + ")\n";
+        }
+        wxMessageBox(info, wxT("Container Items"), wxOK | wxICON_INFORMATION, parent);
+      }
+
+      bool empty() const {
+        return items.empty();
+      }
+
+      void clear() {
+        items.clear();
+      }
+
+      const vector<shared_ptr<T>>& getItems() const {
+        return items;
+      }
+
+      auto begin() -> decltype(items.begin()) {
+        return items.begin();
+      }
+
+      auto end() -> decltype(items.end()) {
+        return items.end();
+      }
+
+      auto begin() const -> decltype(items.begin()) const {
+        return items.begin();
+      }
+
+      auto end() const -> decltype(items.end()) const {
+        return items.end();
+      }
+    };
+
+
+    //*************************************************************************************************************************
   // Create the ChoreDoer class
     class ChoreDoer {
     public:
-        vector<shared_ptr<Chore>> assignedChores;
+        Container<Chore> assignedChores;
         wxString name;
         int choreAmount;
         int age;
@@ -695,16 +997,17 @@ namespace ChoreAppNamespace {
             }
         }
     };
+
     //*********************************************************************************************************************
     // create the ChoreManager class
     class ChoreManager {
     private:
         json j;
-        vector<shared_ptr<Chore>> chores;
+        Container<Chore> chores;
         vector<shared_ptr<ChoreDoer>> doers;
         wxString dynamicFile;
         Client* client = nullptr;  // Initialize to nullptr to clearly indicate no client initially
-
+        int choreCount;
 
     public:
         // Constructor to initialize the ChoreManager object
@@ -750,13 +1053,43 @@ namespace ChoreAppNamespace {
 
         // Method to load chores from the JSON file
         void loadChores() {
+          try {
             if (j.contains("chores") && j["chores"].is_array()) {
-                chores.clear(); // Clear existing chores before loading new ones
-                for (const auto& choreJson : j["chores"]) {
-                    auto chore = std::make_shared<Chore>(choreJson);
-                    chores.push_back(chore);
+              for (auto& choreJson : j["chores"]) {
+                string difficulty = choreJson.value("difficulty", "unknown");
+                shared_ptr<Chore> chore;
+
+                if (difficulty == "easy") {
+                  chore = make_shared<EasyChore>(choreJson);
                 }
+                else if (difficulty == "medium") {
+                  chore = make_shared<MediumChore>(choreJson);
+                }
+                else if (difficulty == "hard") {
+                  chore = make_shared<HardChore>(choreJson);
+                }
+                else {
+                  cerr << "Unknown difficulty level: " << difficulty << endl;
+                  continue;
+                }
+
+                chores.push_back(chore); // Adding to the container
+                choreCount++;
+              }
             }
+          }
+          catch (const json::parse_error& e) {
+            cerr << "JSON parse error: " << e.what() << endl;
+          }
+          catch (const json::out_of_range& e) {
+            cerr << "JSON out of range error: " << e.what() << endl;
+          }
+          catch (const json::type_error& e) {
+            cerr << "JSON type error: " << e.what() << endl;
+          }
+          catch (const exception& e) {
+            cerr << "Standard exception: " << e.what() << endl;
+          }
         }
 
         // Method to load chore doers from the JSON file
@@ -803,7 +1136,14 @@ namespace ChoreAppNamespace {
 
         // Method to add a new chore to the list
         void addChore(const json& choreJson) {
+            shared_ptr<Chore> chore;
             if (!choreJson.is_null()) {
+              if (choreJson["difficulty"] == "easy") {
+                chore = make_shared<EasyChore>(choreJson);
+              }
+              else {
+
+              }
                 auto chore = std::make_shared<Chore>(choreJson);
                 chores.push_back(chore);
                 saveData();  // Save every time a chore is added
