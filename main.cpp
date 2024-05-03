@@ -107,7 +107,7 @@ namespace ChoreAppNamespace {
         return output;
       }
 
-      void modifyProfile(wxString &newName, bool &newNotify, wxString &newTheme) {
+      void modifyProfile(const wxString &newName, const bool &newNotify, const wxString &newTheme) {
         wxMessageDialog(nullptr, wxT("Modifying Profile...")).ShowModal();
 
         setUsername(newName);
@@ -655,10 +655,10 @@ namespace ChoreAppNamespace {
         // toStringS using wxString for GUI compatibilityu
         wxString toStringS(STATUS s) const {
             switch (s) {
-            case STATUS::NOT_STARTED: return "not_started";
-            case STATUS::IN_PROGRESS: return "in_progress";
+            case STATUS::NOT_STARTED: return "not started";
+            case STATUS::IN_PROGRESS: return "in progress";
             case STATUS::COMPLETED: return "completed";
-            default: return "not_started";
+            default: return "not started";
             }
         }
 
@@ -712,6 +712,7 @@ namespace ChoreAppNamespace {
         multitasking_tips = j["multitasking_tips"].is_null() ? wxString("") : wxString(j["multitasking_tips"].get<string>());
       }
 
+      /*
       // Override the startChore function for GUI-specific actions
       void startChore(wxWindow* parent) override {
         // Display a start message using a GUI message box
@@ -735,7 +736,7 @@ namespace ChoreAppNamespace {
         // Call the base class resetChore to reset chore status
         Chore::resetChore(parent);
       }
-
+      */
       // Override to provide a string representation of class attributes for debugging and display
       wxString PrettyPrintClassAttributes() const override {
         // Combine base class attributes with multitasking tips
@@ -750,6 +751,14 @@ namespace ChoreAppNamespace {
         // Add multitasking tips to JSON
         j["multitasking_tips"] = string(multitasking_tips.mb_str());
         return j;
+      }
+
+      // Equality comparison to check if two EasyChore objects are the same
+      bool operator==(const EasyChore& other) const {
+        if (Chore::operator==(other)) {  // First compare base class attributes
+          return multitasking_tips == other.multitasking_tips;  // Then compare multitasking tips
+        }
+        return false;
       }
 
       wxString getMultitaskingTips() {
@@ -776,6 +785,7 @@ namespace ChoreAppNamespace {
         variations = j["variations"].is_null() ? vector<wxString>() : parseVectorWXString(j["variations"]);
       }
 
+      /*
       // Override the startChore function for GUI-specific actions
       void startChore(wxWindow* parent) override {
         // Display a start message using a GUI message box
@@ -800,6 +810,7 @@ namespace ChoreAppNamespace {
         // Call the base class resetChore to reset chore status
         Chore::resetChore(parent);
       }
+      */
 
       // Override to provide a string representation of class attributes for debugging and display
       wxString PrettyPrintClassAttributes() const override {
@@ -821,11 +832,19 @@ namespace ChoreAppNamespace {
         return j;
       }
 
+      // Equality comparison to check if two MediumChore objects are the same
+      bool operator==(const MediumChore& other) const {
+        if (Chore::operator==(other)) {  // First compare base class attributes
+          return variations == other.variations;  // Then compare variations
+        }
+        return false;
+      }
+
       vector<wxString> getVariations() {
         return variations;
       }
 
-      void setVariations(vector<wxString> newVariation) {
+      void setVariations(const vector<wxString> &newVariation) {
         variations = newVariation;
         triggerUpdate();
       }
@@ -847,6 +866,13 @@ namespace ChoreAppNamespace {
           name(subtaskJson["name"].is_null() ? wxString("") : wxString(subtaskJson["name"].get<string>())),
           estimated_time(subtaskJson["estimated_time"].is_null() ? wxString("") : wxString(subtaskJson["estimated_time"].get<string>())),
           earnings(subtaskJson["earnings"].is_null() ? 0 : subtaskJson["earnings"].get<int>()) {}
+
+        // Define equality operator for Subtask
+        bool operator==(const Subtask& other) const {
+          return name == other.name &&
+            estimated_time == other.estimated_time &&
+            earnings == other.earnings;
+        }
       };
 
       vector<Subtask> subtasks; // Stores subtasks associated with the hard chore
@@ -860,6 +886,7 @@ namespace ChoreAppNamespace {
         }
       }
 
+      /*
       // Override the startChore function for GUI-specific actions
       void startChore(wxWindow* parent) override {
         // Display a start message using a GUI message box
@@ -887,6 +914,7 @@ namespace ChoreAppNamespace {
         // Call the base class resetChore to reset chore status
         Chore::resetChore(parent);
       }
+      */
 
       // Override to provide a string representation of class attributes for debugging and display
       wxString PrettyPrintClassAttributes() const override {
@@ -920,6 +948,25 @@ namespace ChoreAppNamespace {
       // Setter function to set the vector of subtasks
       void setSubtasks(const vector<Subtask>& newSubtasks) {
         subtasks = newSubtasks;
+      }
+
+      // Equality comparison to check if two HardChore objects are the same
+      bool operator==(const HardChore& other) const {
+        if (!Chore::operator==(other)) {  // First compare base class attributes
+          return false;
+        }
+
+        if (this->subtasks.size() != other.subtasks.size()) {  // Ensure both have the same number of subtasks
+          return false;
+        }
+
+        for (size_t i = 0; i < this->subtasks.size(); ++i) {
+          if (!(this->subtasks[i] == other.subtasks[i])) {  // Compare each subtask individually
+            return false;
+          }
+        }
+
+        return true;  // Return true if all checks pass
       }
 
     };
@@ -1029,7 +1076,7 @@ namespace ChoreAppNamespace {
       }
 
       // Display the details of all items in the container using a message box.
-      // Displays all chores
+      // Displays all chores for any container
       void displayAllItems(wxWindow* parent) const {
         wxString info;
         for (const auto& item : items) {
@@ -1038,6 +1085,7 @@ namespace ChoreAppNamespace {
         wxMessageBox(info, wxT("Container Items"), wxOK | wxICON_INFORMATION, parent);
       }
 
+      // Returns all chores for any container
       wxString returnAllItems() {
         wxString info;
         for (const auto& item : items) {
@@ -1088,7 +1136,8 @@ namespace ChoreAppNamespace {
         int totalEarnings;
 
         // Constructor to initialize the ChoreDoer object
-        ChoreDoer(const wxString& name, int age) : name(name), age(age), choreAmount(0), totalEarnings(0) {}
+        ChoreDoer(const wxString& name, int age) : name(name), age(age), choreAmount(0), totalEarnings(0),
+          assignedChores(Container<Chore>()) {}
 
         // Method to assign a chore to the ChoreDoer
         void assignChore(const shared_ptr<Chore>& chore) {
@@ -1100,6 +1149,11 @@ namespace ChoreAppNamespace {
             return name;
         }
 
+        void setName(const wxString &newName)
+        {
+          name = newName;
+        }
+
         int getTotalEarnings() const {
             return totalEarnings;
         }
@@ -1108,12 +1162,29 @@ namespace ChoreAppNamespace {
             return choreAmount;
         }
 
+        // Used when all chores are cleared from ChoreDoers assigned chores
+        void resetChoreAmount()
+        {
+          choreAmount = 0;
+        }
+
+        // Used when a chore is removed from ChoreDoers assigned chores
+        void decreaseChoreAmount()
+        {
+          choreAmount--;
+        }
+
         // Method to display the ChoreDoer details
         wxString printChoreDoer() const {
             wxString result = "Chore Doer: " + name + "\n";
             result += "Total Earnings: $" + wxString::Format(wxT("%d"), totalEarnings) + "\n";
             result += "Chore Amount: " + wxString::Format(wxT("%d"), choreAmount) + "\n";
             return result;
+        }
+
+        wxString returnAssignedChores()
+        {
+          return assignedChores.returnAllItems();
         }
 
         // Sort assigned chores by earnings
@@ -1219,7 +1290,8 @@ namespace ChoreAppNamespace {
         // Clear all chore doers from the list
         void clearChoreDoers() {
           try {
-            doers.clear();
+            if (!doers.empty())
+              doers.clear();
           }
           catch (const exception& e) {
             wxMessageBox(wxString::Format("Exception caught in clearChoreDoers: %s", e.what()), wxT("Error"), wxOK | wxICON_ERROR);
@@ -1624,7 +1696,7 @@ namespace ChoreAppNamespace {
 
           if (doer != doers.end()) {
             wxString info = "Chore Doer: " + (*doer)->getName() + " has chores:\n";
-            info += (*doer)->assignedChores.returnAllItems();  // Use Container's method
+            info += (*doer)->returnAssignedChores();  // Use Container's method
             return info;
           }
 
@@ -1636,7 +1708,7 @@ namespace ChoreAppNamespace {
           wxString info;
           for (const auto& doer : doers) {
             info += "Chore Doer: " + doer->getName() + " has chores:\n";
-            info += doer->assignedChores.returnAllItems();  // Use Container's method
+            info += doer->returnAssignedChores();  // Use Container's method
             info += "\n";  // Add a newline for separation between doers
           }
           return info;  // Return the complete string
@@ -1662,6 +1734,25 @@ namespace ChoreAppNamespace {
             else {
                 wxMessageBox("Error adding chore: Invalid JSON", "JSON Error", wxOK | wxICON_ERROR);
             }
+        }
+
+        // Method to move a chore between two chore doers
+        void moveChoreBetweenDoers(const string& fromDoer, const string& toDoer, int choreId) {
+          bool found = false;
+          for (auto& doer : doers) {
+            if (doer->getName() == fromDoer) {
+              for (auto& targetDoer : doers) {
+                if (targetDoer->getName() == toDoer) {
+                  doer->assignedChores.moveItemToAnotherContainer(choreId, targetDoer->assignedChores);
+                  found = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (!found) {
+            wxMessageBox("Error adding chore: Chore or Chore Doer not found.", "Iteration Error", wxOK | wxICON_ERROR);
+          }
         }
 
         // Output all data to the console or to file
