@@ -15,6 +15,8 @@
 #include <vector>
 #include <memory>
 #include <cstdlib>  // For rand() and srand()
+#include <algorithm>
+#include <random>
 #include <ctime>    // For time()
 #include <fstream>
 #include <sstream>
@@ -46,136 +48,189 @@ namespace ChoreAppNamespace {
     // Client class modified to work with ClientDialog and wxWidgets functions
     class Client {
     private:
-        wxString username;
-        wxString lastLoggedIn;
+      struct Preferences {
         bool notify;
-        wxString theme;
+        wxString theme;  // Using wxString for better integration with wxWidgets
 
-    public:
-        // Constructor to initialize the client object
-        Client(const wxString& username, const wxString& theme, bool notify)
-            : username(username), theme(validateTheme(theme)), notify(notify) {
-            UpdateLastLoggedIn();
-        }
+        Preferences(const json& j)
+          : notify(j.contains("notify") && !j["notify"].is_null() ? j["notify"].get<bool>() : false),
+          theme(j.contains("theme") && !j["theme"].is_null() ? wxString(j["theme"].get<string>()) : wxString("Default")) {}
+
         // Validate theme input
         static wxString validateTheme(const wxString& theme) {
-            if (theme == "dark" || theme == "light") {
-                return theme;
-            }
-            else {
-                wxLogWarning("Invalid theme specified: %s. Setting default to 'light'.", theme);
-                return "light";  // Default theme
-            }
-        }
-
-        // Method to update the last logged-in time to the current time
-        void UpdateLastLoggedIn() {
-            time_t now = time(nullptr);  // Get the current time
-            struct tm timeinfo;
-            localtime_s(&timeinfo, &now);  // Safe conversion from time_t to tm struct
-            std::stringstream ss;
-            ss << std::put_time(&timeinfo, "%Y-%m-%d %H:%M:%S");
-            lastLoggedIn = wxString(ss.str());
-        }
-
-        // Setters and getters for username
-        void setUsername(const wxString& newUsername) {
-            if (!newUsername.IsEmpty()) {
-                username = newUsername;
-                UpdateLastLoggedIn();  // Update last logged in when username changes
-            }
-        }
-
-        wxString getUsername() const {
-            return username;
-        }
-
-        // Setters and getters for notification settings
-        void setNotify(bool newNotify) {
-            notify = newNotify;
-        }
-
-        bool getNotify() const {
-            return notify;
-        }
-
-        // Setters and getters for theme
-        void setTheme(const wxString& newTheme) {
-            theme = validateTheme(newTheme);
-        }
-
-        wxString getTheme() const {
+          if (theme == "dark" || theme == "light") {
             return theme;
+          }
+          wxLogWarning("Invalid theme specified: %s. Setting default to 'light'.", theme);
+          return "light";  // Default theme
         }
+      };
 
-        // Getter for last logged-in
-        wxString getLastLoggedIn() const {
-            return lastLoggedIn;
-        }
+      struct UserProfile {
+        wxString username;
+        wxString last_logged_in;
+        Preferences preferences;
 
-        // Display details - for logging or debugging, not for GUI display
-        void printDetails() const {
-            wxLogMessage("Username: %s", username);
-            wxLogMessage("Last Logged In: %s", lastLoggedIn);
-            wxLogMessage("Notification: %s", notify ? "Enabled" : "Disabled");
-            wxLogMessage("Theme: %s", theme);
+        UserProfile(const json& j)
+          : username(j.contains("username") && !j["username"].is_null() ? wxString(j["username"].get<string>()) : wxString("DefaultUser")),
+          last_logged_in(getCurrentDateTime()),
+          preferences(j.contains("preferences") && !j["preferences"].is_null() ? j["preferences"] : json{}) {}
+
+        wxString getCurrentDateTime() {
+          wxDateTime now = wxDateTime::Now();
+          return now.FormatISOCombined(' ');
         }
+      };
+
+      UserProfile userProfile;
+
+    public:
+      Client(const json& j)
+        : userProfile(j.contains("user_profile") ? j["user_profile"] : json{}) {}
+
+      json toJSON() const {
+        // Create a json object
+        json output;
+
+        // Add username to the json output, check if it's empty and provide a default value
+        output["username"] = userProfile.username.IsEmpty() ? "Unknown" : userProfile.username.ToStdString();
+
+        // Add last_logged_in to the json output, check if it's empty and provide a default value
+        output["last_logged_in"] = userProfile.last_logged_in.IsEmpty() ? "Never" : userProfile.last_logged_in.ToStdString();
+
+        // Add preferences to the json output, handling notify and theme with defaults if they are empty
+        output["preferences"] = {
+            {"notify", userProfile.preferences.notify},  // bool value does not need a null check
+            {"theme", userProfile.preferences.theme.IsEmpty() ? "Default" : userProfile.preferences.theme.ToStdString()}
+        };
+
+        return output;
+      }
+
+      void modifyProfile(wxString &newName, bool &newNotify, wxString &newTheme) {
+        wxMessageDialog(nullptr, wxT("Modifying Profile...")).ShowModal();
+
+        setUsername(newName);
+        setNotify(newNotify);
+        setTheme(newTheme);
+
+        userProfile.last_logged_in = userProfile.getCurrentDateTime();
+        
+        // Assuming JSON input for preferences needs custom handling or different dialogs
+        // This part might need further adaptation based on actual preferences structure and UI design
+      }
+
+      wxString printProfile() const {
+        wxString result;
+        result += "Username: " + userProfile.username + "\n";
+        result += "Last Logged In: " + userProfile.last_logged_in + "\n";
+        result += "Notifications: " + wxString(userProfile.preferences.notify ? "Enabled" : "Disabled") + "\n";
+        result += "Theme: " + userProfile.preferences.theme + "\n";
+        return result;
+      }
+
+      // Setters and getters for username
+      void setUsername(const wxString& newUsername) {
+        if (!newUsername.IsEmpty()) {
+          userProfile.username = newUsername;
+          userProfile.last_logged_in = userProfile.getCurrentDateTime();  // Update last logged in when username changes
+        }
+      }
+
+      // Setters and getters for notification settings
+      void setNotify(bool newNotify) {
+        userProfile.preferences.notify = newNotify;
+      }
+
+
+      // Setters and getters for theme
+      void setTheme(const wxString& newTheme) {
+        userProfile.preferences.theme = userProfile.preferences.validateTheme(newTheme);
+      }
+
+      wxString getUserName() const {
+        return userProfile.username;
+      }
+
+      wxString getLastLoggedIn() const {
+        return userProfile.last_logged_in;
+      }
+
+      wxString getNotify() const {
+        return userProfile.preferences.notify ? wxT("Enabled") : wxT("Disabled");
+      }
+
+      wxString getTheme() const {
+        return userProfile.preferences.theme.IsEmpty() ? wxString("Default") : userProfile.preferences.theme;
+      }
+
+      void toggleNotify() {
+        userProfile.preferences.notify = !userProfile.preferences.notify;
+      }
+
+      void toggleTheme() {
+        if (userProfile.preferences.theme == "dark") {
+          userProfile.preferences.theme = "light";
+        }
+        else {
+          userProfile.preferences.theme = "dark";
+        }
+      }
     };
 
     //*******************************************************************************************************************
 
-    // Define a frame where 'Client' settings can be adjusted
     class ClientDialog : public wxDialog {
     public:
-        ClientDialog(wxWindow* parent, Client* client)
-            : wxDialog(parent, wxID_ANY, wxT("Edit Client Profile"), wxDefaultPosition, wxSize(350, 200)),
-            m_client(client) {
+      ClientDialog(wxWindow* parent, Client* client)
+        : wxDialog(parent, wxID_ANY, wxT("Edit Client Profile"), wxDefaultPosition, wxSize(350, 200)),
+        m_client(client) {
 
-            // Setup UI components
-            auto* sizer = new wxBoxSizer(wxVERTICAL);
-            m_usernameCtrl = new wxTextCtrl(this, wxID_ANY, m_client->getUsername());
-            m_themeCtrl = new wxTextCtrl(this, wxID_ANY, m_client->getTheme());
-            m_notifyCtrl = new wxCheckBox(this, wxID_ANY, wxT("Enable Notifications"), wxDefaultPosition, wxDefaultSize, wxCHK_2STATE);
-            m_notifyCtrl->SetValue(m_client->getNotify());
+        // Setup UI components
+        auto* sizer = new wxBoxSizer(wxVERTICAL);
+        m_usernameCtrl = new wxTextCtrl(this, wxID_ANY, m_client->getUserName());
+        m_themeCtrl = new wxTextCtrl(this, wxID_ANY, m_client->getTheme());
+        m_notifyCtrl = new wxCheckBox(this, wxID_ANY, wxT("Enable Notifications"), wxDefaultPosition, wxDefaultSize, wxCHK_2STATE);
+        m_notifyCtrl->SetValue(m_client->getNotify() == "Enabled");
 
-            // Add components to the sizer
-            sizer->Add(m_usernameCtrl, 0, wxALL | wxEXPAND, 5);
-            sizer->Add(m_themeCtrl, 0, wxALL | wxEXPAND, 5);
-            sizer->Add(m_notifyCtrl, 0, wxALL, 5);
+        // Add components to the sizer
+        sizer->Add(m_usernameCtrl, 0, wxALL | wxEXPAND, 5);
+        sizer->Add(m_themeCtrl, 0, wxALL | wxEXPAND, 5);
+        sizer->Add(m_notifyCtrl, 0, wxALL, 5);
 
-            // Add OK and Cancel buttons
-            auto* buttonSizer = new wxStdDialogButtonSizer();
-            buttonSizer->AddButton(new wxButton(this, wxID_OK, wxT("Save")));
-            buttonSizer->AddButton(new wxButton(this, wxID_CANCEL, wxT("Cancel")));
-            buttonSizer->Realize();
+        // Add OK and Cancel buttons
+        auto* buttonSizer = new wxStdDialogButtonSizer();
+        buttonSizer->AddButton(new wxButton(this, wxID_OK, wxT("Save")));
+        buttonSizer->AddButton(new wxButton(this, wxID_CANCEL, wxT("Cancel")));
+        buttonSizer->Realize();
 
-            // Add the button sizer to the main sizer
-            sizer->Add(buttonSizer, 0, wxALL | wxALIGN_CENTER, 5);
-            SetSizer(sizer);
+        // Add the button sizer to the main sizer
+        sizer->Add(buttonSizer, 0, wxALL | wxALIGN_CENTER, 5);
+        SetSizer(sizer);
 
-            // Bind events
-            Bind(wxEVT_BUTTON, &ClientDialog::OnSave, this, wxID_OK);
-            Bind(wxEVT_BUTTON, &ClientDialog::OnCancel, this, wxID_CANCEL);
-        }
+        // Bind events
+        Bind(wxEVT_BUTTON, &ClientDialog::OnSave, this, wxID_OK);
+        Bind(wxEVT_BUTTON, &ClientDialog::OnCancel, this, wxID_CANCEL);
+      }
 
     private:
-        Client* m_client;          // Pointer to the client object
-        wxTextCtrl* m_usernameCtrl;  // Text control for username
-        wxTextCtrl* m_themeCtrl;     // Theme 
-        wxCheckBox* m_notifyCtrl;    // Checkbox for notifications
+      Client* m_client;          // Pointer to the client object
+      wxTextCtrl* m_usernameCtrl;  // Text control for username
+      wxTextCtrl* m_themeCtrl;     // Text control for theme
+      wxCheckBox* m_notifyCtrl;    // Checkbox for notifications
 
-        // Event handlers
-        void OnSave(wxCommandEvent& event) {
-            m_client->setUsername(m_usernameCtrl->GetValue());
-            m_client->setTheme(m_themeCtrl->GetValue());
-            m_client->setNotify(m_notifyCtrl->GetValue());
-            EndModal(wxID_OK);  // Close the dialog with ID_OK
-        }
+      // Event handlers
+      void OnSave(wxCommandEvent& event) {
+        m_client->setUsername(m_usernameCtrl->GetValue());
+        m_client->setTheme(m_themeCtrl->GetValue());
+        m_client->setNotify(m_notifyCtrl->GetValue());
+        EndModal(wxID_OK);  // Close the dialog with ID_OK
+      }
 
-        // Cancel button event handler
-        void OnCancel(wxCommandEvent& event) {
-            EndModal(wxID_CANCEL);  // Close the dialog with ID_CANCEL
-        }
+      // Cancel button event handler
+      void OnCancel(wxCommandEvent& event) {
+        EndModal(wxID_CANCEL);  // Close the dialog with ID_CANCEL
+      }
     };
 
 
@@ -209,19 +264,19 @@ namespace ChoreAppNamespace {
 
     public:
         // Constructor to initialize the Chore object
-        Chore(const json& j, std::function<void()> callback = nullptr) : onUpdate(callback) {
+        Chore(const json& j, function<void()> callback = nullptr) : onUpdate(callback) {
             id = j["id"].is_null() ? -1 : j["id"].get<int>();
-            name = j["name"].is_null() ? wxString("") : wxString(j["name"].get<std::string>());
-            description = j["description"].is_null() ? wxString("") : wxString(j["description"].get<std::string>());
-            frequency = j["frequency"].is_null() ? wxString("") : wxString(j["frequency"].get<std::string>());
-            estimated_time = j["estimated_time"].is_null() ? wxString("") : wxString(j["estimated_time"].get<std::string>());
+            name = j["name"].is_null() ? wxString("") : wxString(j["name"].get<string>());
+            description = j["description"].is_null() ? wxString("") : wxString(j["description"].get<string>());
+            frequency = j["frequency"].is_null() ? wxString("") : wxString(j["frequency"].get<string>());
+            estimated_time = j["estimated_time"].is_null() ? wxString("") : wxString(j["estimated_time"].get<string>());
             earnings = j["earnings"].is_null() ? 0 : j["earnings"].get<int>();
 
             days = j["days"].is_null() ? vector<wxString>() : parseVectorWXString(j["days"]);
-            location = j["location"].is_null() ? wxString("") : wxString(j["location"].get<std::string>());
+            location = j["location"].is_null() ? wxString("") : wxString(j["location"].get<string>());
             tools_required = j["tools_required"].is_null() ? vector<wxString>() : parseVectorWXString(j["tools_required"]);
             materials_needed = j["materials_needed"].is_null() ? vector<wxString>() : parseVectorWXString(j["materials_needed"]);
-            notes = j["notes"].is_null() ? wxString("") : wxString(j["notes"].get<std::string>());
+            notes = j["notes"].is_null() ? wxString("") : wxString(j["notes"].get<string>());
             tags = j["tags"].is_null() ? vector<wxString>() : parseVectorWXString(j["tags"]);
             difficulty = parseDifficulty(j);
             priority = parsePriority(j);
@@ -239,12 +294,11 @@ namespace ChoreAppNamespace {
             vector<wxString> result;
             if (!j.is_null() && j.is_array()) {
                 for (const auto& item : j) {
-                    result.push_back(wxString(item.get<std::string>()));
+                    result.push_back(wxString(item.get<string>()));
                 }
             }
             return result;
         }
-
 
         // Call this function to trigger GUI updates
         void triggerUpdate() {
@@ -252,6 +306,7 @@ namespace ChoreAppNamespace {
                 onUpdate();
             }
         }
+
         // startChore method using wxTextEntryDialog instead of standard input
         virtual void startChore(wxWindow* parent) {
             wxString message;
@@ -323,22 +378,31 @@ namespace ChoreAppNamespace {
         // prettyPrint method to display the Chore class object in a readable format
         virtual wxString PrettyPrintClassAttributes() const {
             wxString result = "Chore ID: " + to_string(id) + "\n"
-                + "Name: " + name.ToStdString() + "\n"  // Convert wxString to std::string
-                + "Description: " + description.ToStdString() + "\n"  // Convert wxString to std::string
-                + "Frequency: " + frequency.ToStdString() + "\n"  // Convert wxString to std::string
-                + "Estimated Time: " + estimated_time.ToStdString() + "\n"  // Convert wxString to std::string
-                + "Earnings: " + std::to_string(earnings) + "\n"
-                + "Days: " + formatVector(days) + "\n"  // Ensure formatVector returns std::string
-                + "Location: " + location.ToStdString() + "\n"  // Convert wxString to std::string
-                + "Tools Required: " + formatVector(tools_required) + "\n"  // Ensure formatVector returns std::string
-                + "Materials Needed: " + formatVector(materials_needed) + "\n"  // Ensure formatVector returns std::string
-                + "Notes: " + notes.ToStdString() + "\n"  // Convert wxString to std::string
-                + "Tags: " + formatVector(tags) + "\n"  // Ensure formatVector returns std::string
-                + "Status: " + toStringS(status) + "\n"  // Convert wxString to std::string if needed
-                + "Priority: " + toStringP(priority) + "\n"  // Convert wxString to std::string if needed
-                + "Difficulty: " + toStringD(difficulty);  // Convert wxString to std::string if needed
+                + "Name: " + name.ToStdString() + "\n"  // Convert wxString to string
+                + "Description: " + description.ToStdString() + "\n"  // Convert wxString to string
+                + "Frequency: " + frequency.ToStdString() + "\n"  // Convert wxString to string
+                + "Estimated Time: " + estimated_time.ToStdString() + "\n"  // Convert wxString to string
+                + "Earnings: " + to_string(earnings) + "\n"
+                + "Days: " + formatVector(days) + "\n"  // Ensure formatVector returns string
+                + "Location: " + location.ToStdString() + "\n"  // Convert wxString to string
+                + "Tools Required: " + formatVector(tools_required) + "\n"  // Ensure formatVector returns string
+                + "Materials Needed: " + formatVector(materials_needed) + "\n"  // Ensure formatVector returns string
+                + "Notes: " + notes.ToStdString() + "\n"  // Convert wxString to string
+                + "Tags: " + formatVector(tags) + "\n"  // Ensure formatVector returns string
+                + "Status: " + toStringS(status) + "\n"  // Convert wxString to string if needed
+                + "Priority: " + toStringP(priority) + "\n"  // Convert wxString to string if needed
+                + "Difficulty: " + toStringD(difficulty);  // Convert wxString to string if needed
 
             return result;
+        }
+
+        wxString simplePrint() const {
+          wxString result = "Chore ID: " + to_string(id) + "\n"
+            + "Name: " + name.ToStdString() + "\n"  // Convert wxString to string
+            + "Description: " + description.ToStdString() + "\n"  // Convert wxString to string
+            + "Earnings: " + to_string(earnings) + "\n";
+
+          return result;
         }
 
         // modifyChore method using wxTextEntryDialog
@@ -502,24 +566,7 @@ namespace ChoreAppNamespace {
                 this->status == other.status &&
                 this->priority == other.priority);
         }
-        // Comparison operators for sorting earnings
-        struct CompareEarnings {
-            bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
-                return a->getEarnings() < b->getEarnings();
-            }
-        };
-        // Comparison operators for sorting difficulty
-        struct CompareDifficulty {
-            bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
-                return a->getDifficulty() < b->getDifficulty(); // Make sure Difficulty is comparable
-            }
-        };
-        // Comparison operators for sorting ID
-        struct CompareID {
-            bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
-                return a->getId() < b->getId();
-            }
-        };
+       
 
     protected:
         // Helper function to format a vector of strings for display
@@ -616,6 +663,41 @@ namespace ChoreAppNamespace {
         }
 
     };
+
+
+    // Global sorting functions for Chores:
+     // Comparison operators for sorting earnings
+    struct CompareEarnings {
+      bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
+        return a->getEarnings() < b->getEarnings();
+      }
+    };
+    // Comparison operators for sorting difficulty
+    struct CompareDifficulty {
+      bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
+        return a->getDifficulty() < b->getDifficulty(); // Make sure Difficulty is comparable
+      }
+    };
+    // Comparison operators for sorting ID
+    struct CompareID {
+      bool operator()(const shared_ptr<Chore>& a, const shared_ptr<Chore>& b) const {
+        return a->getId() < b->getId();
+      }
+    };
+
+    // Search criteria functions
+    bool matchById(const shared_ptr<Chore>& chore, const int& id) {
+      return chore->getId() == id;
+    }
+
+    bool matchByName(const shared_ptr<Chore>& chore, const wxString& name) {
+      return chore->getName() == name;
+    }
+
+    bool matchByEarnings(const shared_ptr<Chore>& chore, const int& earnings) {
+      return chore->getEarnings() == earnings;
+    }
+
     //*************************************************************************************************************************
   // Create the EasyChore class
     // Inherits from the Chore class
@@ -627,7 +709,7 @@ namespace ChoreAppNamespace {
       // Constructor initializes EasyChore with JSON data, calling the base Chore constructor
       EasyChore(const json& j) : Chore(j) {
         // Retrieves multitasking tips from JSON and initializes the wxString
-        multitasking_tips = j["multitasking_tips"].is_null() ? wxT("") : wxString(j["multitasking_tips"].get<std::string>());
+        multitasking_tips = j["multitasking_tips"].is_null() ? wxString("") : wxString(j["multitasking_tips"].get<string>());
       }
 
       // Override the startChore function for GUI-specific actions
@@ -666,8 +748,17 @@ namespace ChoreAppNamespace {
         // Start with base class JSON
         json j = Chore::toJSON();
         // Add multitasking tips to JSON
-        j["multitasking_tips"] = std::string(multitasking_tips.mb_str());
+        j["multitasking_tips"] = string(multitasking_tips.mb_str());
         return j;
+      }
+
+      wxString getMultitaskingTips() {
+        return multitasking_tips;
+      }
+
+      void setMultitaskingTips(const wxString &newTip) {
+        multitasking_tips = newTip;
+        triggerUpdate();
       }
     };
 
@@ -721,14 +812,24 @@ namespace ChoreAppNamespace {
       json toJSON() const override {
         // Start with base class JSON
         json j = Chore::toJSON();
-        // Convert variations to a vector of std::string for JSON serialization
-        std::vector<std::string> variationsStr;
+        // Convert variations to a vector of string for JSON serialization
+        vector<string> variationsStr;
         for (const auto& v : variations) {
-          variationsStr.push_back(std::string(v.mb_str()));
+          variationsStr.push_back(string(v.mb_str()));
         }
         j["variations"] = variationsStr;
         return j;
       }
+
+      vector<wxString> getVariations() {
+        return variations;
+      }
+
+      void setVariations(vector<wxString> newVariation) {
+        variations = newVariation;
+        triggerUpdate();
+      }
+
     };
 
     //*************************************************************************************************************************
@@ -743,8 +844,8 @@ namespace ChoreAppNamespace {
 
         // Constructor initializes Subtask with JSON data
         Subtask(const json& subtaskJson) :
-          name(subtaskJson["name"].is_null() ? wxT("") : wxString(subtaskJson["name"].get<std::string>())),
-          estimated_time(subtaskJson["estimated_time"].is_null() ? wxT("") : wxString(subtaskJson["estimated_time"].get<std::string>())),
+          name(subtaskJson["name"].is_null() ? wxString("") : wxString(subtaskJson["name"].get<string>())),
+          estimated_time(subtaskJson["estimated_time"].is_null() ? wxString("") : wxString(subtaskJson["estimated_time"].get<string>())),
           earnings(subtaskJson["earnings"].is_null() ? 0 : subtaskJson["earnings"].get<int>()) {}
       };
 
@@ -802,116 +903,174 @@ namespace ChoreAppNamespace {
         json subtasksJson = json::array();
         for (const auto& subtask : subtasks) {
           json stJson;
-          stJson["name"] = std::string(subtask.name.mb_str());
-          stJson["estimated_time"] = std::string(subtask.estimated_time.mb_str());
+          stJson["name"] = string(subtask.name.mb_str());
+          stJson["estimated_time"] = string(subtask.estimated_time.mb_str());
           stJson["earnings"] = subtask.earnings;
           subtasksJson.push_back(stJson);
         }
         j["subtasks"] = subtasksJson;
         return j;
       }
+
+      // Getter function to retrieve the vector of subtasks
+      const vector<Subtask>& getSubtasks() const {
+        return subtasks;
+      }
+
+      // Setter function to set the vector of subtasks
+      void setSubtasks(const vector<Subtask>& newSubtasks) {
+        subtasks = newSubtasks;
+      }
+
     };
 
     //*************************************************************************************************************************
   // Create the Templated Container class
+// Template class definition for a Container that manages a list of shared_ptr to objects of type T.
     template<typename T>
     class Container {
     private:
-      vector<shared_ptr<T>> items;
+      vector<shared_ptr<T>> items;  // Private vector to store the shared pointers of type T.
 
     public:
-      // Generic bubble sort using comparator
+      // Function to sort the items within the container using a generic comparator.
       template<typename Comparator>
       void sortItems(Comparator comp, bool ascending = true) {
         try {
-          bool swapped;
+          bool swapped;  // Boolean flag to keep track of swapping during the sort.
           do {
             swapped = false;
             for (size_t i = 1; i < items.size(); i++) {
+              // Condition to determine ascending or descending order and compare items accordingly.
               if ((ascending && comp(items[i - 1], items[i])) || (!ascending && comp(items[i], items[i - 1]))) {
-                swap(items[i - 1], items[i]);
-                swapped = true;
+                swap(items[i - 1], items[i]);  // Swaps two elements if they are out of order.
+                swapped = true;  // Set swapped to true indicating a swap occurred.
               }
             }
-          } while (swapped);
+          } while (swapped);  // Continue sorting until no swaps are made.
         }
         catch (const exception& e) {
+          // Handles exceptions by showing a message box with the error.
           wxMessageBox(wxString("Exception thrown in sortItems: ") + wxString(e.what()), wxT("Error"), wxOK | wxICON_ERROR);
         }
       }
 
+      // Templated search method
+      template<typename Key>
+      vector<shared_ptr<T>> searchItem(const Key& key, function<bool(const shared_ptr<T>&, const Key&)> matchCriteria) {
+        vector<shared_ptr<T>> results;
+        for (auto& item : items) {
+          if (matchCriteria(item, key)) {
+            results.push_back(item);
+          }
+        }
+        return results;
+      }
+
+      // Function to display search results
+      void displaySearchResults(const vector<shared_ptr<T>>& results) {
+        if (results.empty()) {
+          wxMessageBox("No items found.", "Search Results", wxOK | wxICON_INFORMATION);
+        }
+        else {
+          wxString info;
+          for (const auto& item : results) {
+            info += item->simplePrint() + "\n";
+          }
+          wxMessageBox(info, "Search Results", wxOK | wxICON_INFORMATION);
+        }
+      }
+
+      // Method to move an item from this container to another container by ID.
       void moveItemToAnotherContainer(int id, Container<T>& destination) {
-        bool found = false;
+        bool found = false;  // Flag to check if the item was found.
         for (auto it = items.begin(); it != items.end(); ++it) {
           if ((*it)->getID() == id) {
-            destination.items.push_back(*it);  // Add to destination
+            destination.items.push_back(*it);  // Add the item to the destination container.
             wxMessageBox(wxString("Chore moved successfully: ") + (*it)->getName(), wxT("Info"), wxOK | wxICON_INFORMATION);
-            items.erase(it);  // Remove from source
+            items.erase(it);  // Remove the item from the current container.
             found = true;
-            break;  // Stop after finding and moving the item
+            break;  // Exit loop once item is moved.
           }
         }
 
         if (!found) {
+          // If no item is found, display an information message.
           wxMessageBox(wxT("Chore not found."), wxT("Info"), wxOK | wxICON_INFORMATION);
         }
       }
 
+      // Method to delete an item from the container based on its ID.
       void deleteItem(int id) {
-        auto it = find_if(items.begin(), items.end(), [id](const shared_ptr<T>& item) { return item->getID() == id; });
+        auto it = std::find_if(items.begin(), items.end(), [id](const shared_ptr<T>& item) { return item->getId() == id; });
         if (it != items.end()) {
-          items.erase(it);
+          items.erase(it);  // Remove the item if found.
           wxMessageBox(wxString("Chore deleted successfully."), wxT("Info"), wxOK | wxICON_INFORMATION);
         }
         else {
+          // Display an error message if the item is not found.
           wxMessageBox(wxT("Chore not found."), wxT("Error"), wxOK | wxICON_ERROR);
         }
       }
 
+      // Method to add an item to the container.
       void push_back(const shared_ptr<T>& item) {
         items.push_back(item);
       }
 
+      // Returns the number of items in the container.
       size_t size() const {
         return items.size();
       }
 
+      // Overloaded operator[] to access items by their index.
       shared_ptr<T>& operator[](size_t index) {
         return items[index];
       }
 
-      void display(wxWindow* parent) const {
+      // Display the details of all items in the container using a message box.
+      // Displays all chores
+      void displayAllItems(wxWindow* parent) const {
         wxString info;
         for (const auto& item : items) {
-          info += wxString("Chore: ") + item->getName() + " (ID: " + wxString::Format(wxT("%d"), item->getID()) + ")\n";
+          info += wxString("Chore: ") + item->getName() + " (ID: " + wxString::Format(wxT("%d"), item->getId()) + ")\n";
         }
         wxMessageBox(info, wxT("Container Items"), wxOK | wxICON_INFORMATION, parent);
       }
 
+      wxString returnAllItems() {
+        wxString info;
+        for (const auto& item : items) {
+          info += wxString("Chore: ") + item->getName() + " (ID: " + wxString::Format(wxT("%d"), item->getId()) + ")\n";
+        }
+        return info;
+      }
+
+      // Check if the container is empty.
       bool empty() const {
         return items.empty();
       }
 
+      // Clears all items from the container.
       void clear() {
         items.clear();
       }
 
+      // Accessor for the underlying vector of items.
       const vector<shared_ptr<T>>& getItems() const {
         return items;
       }
 
+      // Return iterators to enable range-based loops directly on the container.
       auto begin() -> decltype(items.begin()) {
         return items.begin();
       }
-
       auto end() -> decltype(items.end()) {
         return items.end();
       }
-
       auto begin() const -> decltype(items.begin()) const {
         return items.begin();
       }
-
       auto end() const -> decltype(items.end()) const {
         return items.end();
       }
@@ -957,6 +1116,21 @@ namespace ChoreAppNamespace {
             return result;
         }
 
+        // Sort assigned chores by earnings
+        void sortAssignedChoresByEarnings(bool ascending = true) {
+          assignedChores.sortItems(CompareEarnings(), ascending);
+        }
+
+        // Sort assigned chores by difficulty
+        void sortAssignedChoresByDifficulty(bool ascending = true) {
+          assignedChores.sortItems(CompareDifficulty(), ascending);
+        }
+
+        // Sort assigned chores by ID
+        void sortAssignedChoresByID(bool ascending = true) {
+          assignedChores.sortItems(CompareID(), ascending);
+        }
+
         // method to start a chore
         void startChore(int choreId, wxWindow* parent) {
             for (auto& chore : assignedChores) {
@@ -977,9 +1151,7 @@ namespace ChoreAppNamespace {
                     wxMessageBox(wxString::Format("Chore %s completed. Total earnings now: $%d", chore->getName(), totalEarnings), "Chore Completed", wxOK | wxICON_INFORMATION, parent);
                     break;
                 }
-                else {
-                    wxMessageBox("Chore is already completed or not started.", "No Action Taken", wxOK | wxICON_INFORMATION, parent);
-                }
+                wxMessageBox("Chore is already completed or not started.", "No Action Taken", wxOK | wxICON_INFORMATION, parent);
             }
         }
 
@@ -996,7 +1168,15 @@ namespace ChoreAppNamespace {
                 }
             }
         }
+        // Overloaded insertion operator to output the details of the ChoreDoer
+        friend ostream& operator<<(ostream& os, const ChoreDoer& chDoer);
     };
+
+    // Overloaded ostream operator to facilitate easy output of ChoreDoer's state
+    ostream& operator<<(ostream& os, const ChoreDoer& chDoer) {
+      os << chDoer.printChoreDoer();  // Output formatted chore doer details
+      return os;
+    }
 
     //*********************************************************************************************************************
     // create the ChoreManager class
@@ -1009,6 +1189,59 @@ namespace ChoreAppNamespace {
         Client* client = nullptr;  // Initialize to nullptr to clearly indicate no client initially
         int choreCount;
 
+        // Clear all data from ChoreManager
+        void clearAll() {
+          try {
+            // Clear original Container of chores
+            clearChores();
+            // Clear assigned Container of chores for each chore doer
+            clearAllAssignedChores();
+            // Clear chore doers
+            clearChoreDoers();
+          }
+          catch (const exception& e) {
+            wxMessageBox(wxString::Format("Exception caught in clearAll: %s", e.what()), wxT("Error"), wxOK | wxICON_ERROR);
+          }
+        }
+
+        // Clear all chores from the container
+        void clearChores() {
+          try {
+            if (!chores.empty()) {
+              chores.clear();
+            }
+          }
+          catch (const exception& e) {
+            wxMessageBox(wxString::Format("Exception caught in clearChores: %s", e.what()), wxT("Error"), wxOK | wxICON_ERROR);
+          }
+        }
+
+        // Clear all chore doers from the list
+        void clearChoreDoers() {
+          try {
+            doers.clear();
+          }
+          catch (const exception& e) {
+            wxMessageBox(wxString::Format("Exception caught in clearChoreDoers: %s", e.what()), wxT("Error"), wxOK | wxICON_ERROR);
+          }
+        }
+
+        // Clear all assigned chores for each chore doer
+        void clearAllAssignedChores() {
+          try {
+            if (!doers.empty()) {
+              for (auto& doer : doers) {
+                if (!doer->assignedChores.empty()) {
+                  doer->assignedChores.clear();
+                }
+              }
+            }
+          }
+          catch (const exception& e) {
+            wxMessageBox(wxString::Format("Exception caught in clearAllAssignedChores: %s", e.what()), wxT("Error"), wxOK | wxICON_ERROR);
+          }
+        }
+
     public:
         // Constructor to initialize the ChoreManager object
         ChoreManager(const wxString& fileName) : dynamicFile(fileName) {
@@ -1017,41 +1250,50 @@ namespace ChoreAppNamespace {
         // Destructor to save data when the object is destroyed
         ~ChoreManager() {
             saveData();
+            clearAll();
         }
 
         // Method to load data from the JSON file
         void loadData() {
-            std::ifstream file(dynamicFile.ToStdString());
-            if (!file) {
-                wxMessageBox("Error opening file: " + dynamicFile, "File Error", wxOK | wxICON_ERROR);
-                j = json::object(); // Initialize an empty JSON object if file fails to open
-                return;
-            }
+          ifstream file(dynamicFile.ToStdString());
+          if (!file) {
+            wxMessageBox("Error opening file: " + dynamicFile, "File Error", wxOK | wxICON_ERROR);
+            j = json::object(); // Initialize an empty JSON object if file fails to open
+            return;
+          }
 
-            try {
-                j = json::parse(file);
-            }
-            catch (const json::parse_error& e) {
-                wxMessageBox("JSON Parsing Error: " + wxString(e.what()), "JSON Error", wxOK | wxICON_ERROR);
-                j = json::object(); // Initialize an empty JSON object if parsing fails
-            }
-            file.close();
-            // Load client from JSON
-            if (j.contains("user_profile") && !j["user_profile"].is_null()) {
-                auto userProfile = j["user_profile"];
-                wxString username = userProfile.value("username", "defaultUser");
-                wxString theme = userProfile.value("theme", "light");
-                bool notify = userProfile.value("notify", false);
-                client = new Client(username, theme, notify);
-            }
-            else {
-                client = new Client("defaultUser", "light", false);
-            }
-            // call loadChores method
-            loadChores();
+          try {
+            j = json::parse(file);
+          }
+          catch (const json::parse_error& e) {
+            wxMessageBox("JSON Parsing Error: " + wxString(e.what()), "JSON Error", wxOK | wxICON_ERROR);
+            j = json::object(); // Initialize an empty JSON object if parsing fails
+          }
+          file.close();
+
+          // Load client from JSON
+          if (j.contains("user_profile") && !j["user_profile"].is_null()) {
+            auto userProfile = j["user_profile"];
+            client = new Client(userProfile); //Will be saved user, or DefaultUser
+
+            
+          }
+          // Data does not contain user_profile
+          else {
+            json defaultProfile;
+            defaultProfile["user_profile"] = {
+                {"username", "DefaultUser"},
+                {"preferences", {{"theme", "light"}, {"notify", false}}}
+            };
+
+            client = new Client(defaultProfile);
+          }
+
+          // call loadChores method
+          loadChores();
         }
 
-        // Method to load chores from the JSON file
+        // Method to load chores from the JSON file and create them uniquely based on difficulty
         void loadChores() {
           try {
             if (j.contains("chores") && j["chores"].is_array()) {
@@ -1069,7 +1311,7 @@ namespace ChoreAppNamespace {
                   chore = make_shared<HardChore>(choreJson);
                 }
                 else {
-                  cerr << "Unknown difficulty level: " << difficulty << endl;
+                  wxMessageBox("Unknown difficulty level: " + difficulty, "Loading Chore Error", wxOK | wxICON_ERROR);
                   continue;
                 }
 
@@ -1079,26 +1321,232 @@ namespace ChoreAppNamespace {
             }
           }
           catch (const json::parse_error& e) {
-            cerr << "JSON parse error: " << e.what() << endl;
+            wxMessageBox(wxString::Format("JSON parse error: %s", e.what()), "Error", wxOK | wxICON_ERROR);
           }
           catch (const json::out_of_range& e) {
-            cerr << "JSON out of range error: " << e.what() << endl;
+            wxMessageBox(wxString::Format("JSON out of range error: %s", e.what()), "Error", wxOK | wxICON_ERROR);
           }
           catch (const json::type_error& e) {
-            cerr << "JSON type error: " << e.what() << endl;
+            wxMessageBox(wxString::Format("JSON type error: %s", e.what()), "Error", wxOK | wxICON_ERROR);
           }
           catch (const exception& e) {
-            cerr << "Standard exception: " << e.what() << endl;
+            wxMessageBox(wxString::Format("Standard exception: %s", e.what()), "Error", wxOK | wxICON_ERROR);
           }
+        }
+
+        //Function wrapper for templated sort function
+        template<typename Comparator>
+        void sortChores(Comparator comp, bool ascending = true) {
+          try
+          {
+            // Uses templated functions
+            chores.sortItems(comp, ascending);
+          }
+          catch (const exception& e)
+          {
+            wxMessageBox("Exception caught in sortChores: " , e.what(), wxOK | wxICON_ERROR);
+          }
+        }
+
+        
+
+        // Create a NEW output file containing user_profile, chore_doers, 
+        // chore doers name, and chore doers assigned chores
+        void outputChoreAssignmentsToFile(const wxString& outputPath) {
+          json output;
+
+          // Include client's user profile data
+          output["user_profile"] = client->toJSON();
+
+          // Include chore assignments for each chore doer
+          output["chore_doers"] = json::array();
+
+          // Iterate through chore doers
+          for (const auto& doer : doers) {
+            json doerJson;
+            doerJson["name"] = doer->getName().ToStdString();
+            doerJson["chores"] = json::array();
+
+            // Iterate through chore doers assigned chores
+            for (const auto& chore : doer->assignedChores) {
+              doerJson["chores"].push_back(chore->toJSON());
+            }
+            // Add doerJson json data to output json data (build json file)
+            output["chore_doers"].push_back(doerJson);
+          }
+
+          // Convert JSON to string with pretty formatting
+          string jsonData = output.dump(4);
+
+          // Use standard C++ file handling
+          ofstream outFile(outputPath.ToStdString());
+          if (!outFile.is_open()) {
+            wxMessageBox(wxT("Could not open file to write chore assignments."), "File Error", wxOK | wxICON_ERROR);
+            return;
+          }
+
+          // Write the JSON data to the file with indentation
+          outFile << setw(4) << jsonData;
+          outFile.close();
+        }
+
+        void performSearchByID(int id) {
+          auto resultsById = chores.searchItem<int>(id, matchById);
+          if (resultsById.empty()) {
+            // Search through each ChoreDoer's assigned chores
+            for (auto& doer : doers) {
+              auto doerResults = doer->assignedChores.searchItem<int>(id, matchById);
+              if (!doerResults.empty()) {
+                resultsById.insert(resultsById.end(), doerResults.begin(), doerResults.end());
+              }
+            }
+          }
+          if (resultsById.empty()) {
+            wxMessageBox("No chore found with the specified ID.", "Search Results", wxICON_INFORMATION);
+          }
+          else {
+            chores.displaySearchResults(resultsById);
+          }
+        }
+
+        void searchByName(const wxString& name) {
+          auto resultsName = chores.searchItem<wxString>(name, matchByName);
+          if (resultsName.empty()) {
+            // Search through each ChoreDoer's assigned chores
+            for (auto& doer : doers) {
+              auto doerResults = doer->assignedChores.searchItem<wxString>(name, matchByName);
+              if (!doerResults.empty()) {
+                resultsName.insert(resultsName.end(), doerResults.begin(), doerResults.end());
+              }
+            }
+          }
+          if (resultsName.empty()) {
+            wxMessageBox("No chore found with the specified name.", "Search Results", wxICON_INFORMATION);
+          }
+          else {
+            chores.displaySearchResults(resultsName);
+          }
+        }
+
+        void searchByEarnings(int earnings) {
+          auto resultsEarned = chores.searchItem<int>(earnings, matchByEarnings);
+          if (resultsEarned.empty()) {
+            // Search through each ChoreDoer's assigned chores
+            for (auto& doer : doers) {
+              auto doerResults = doer->assignedChores.searchItem<int>(earnings, matchByEarnings);
+              if (!doerResults.empty()) {
+                resultsEarned.insert(resultsEarned.end(), doerResults.begin(), doerResults.end());
+              }
+            }
+          }
+          if (resultsEarned.empty()) {
+            wxMessageBox("No chore found with the specified earnings.", "Search Results", wxICON_INFORMATION);
+          }
+          else {
+            chores.displaySearchResults(resultsEarned);
+          }
+        }
+
+        // Method to sort chores by earnings
+        void sortChoresByEarnings(bool ascending = true) {
+          CompareEarnings comp;
+          chores.sortItems(comp, ascending);
+          wxMessageBox("Chores sorted by earnings.", "Sort Info", wxOK | wxICON_INFORMATION);
+        }
+
+        // Method to sort chores by difficulty
+        void sortChoresByDifficulty(bool ascending = true) {
+          CompareDifficulty comp;
+          chores.sortItems(comp, ascending);
+          wxMessageBox("Chores sorted by difficulty.", "Sort Info", wxOK | wxICON_INFORMATION);
+        }
+
+        // Method to sort chores by ID
+        void sortChoresByID(bool ascending = true) {
+          CompareID comp;
+          chores.sortItems(comp, ascending);
+          wxMessageBox("Chores sorted by ID.", "Sort Info", wxOK | wxICON_INFORMATION);
+        }
+
+        wxString searchChoreDoer(const wxString& name) {
+          wxString info;
+          for (auto doer : doers) {
+            if (doer->getName() == name) {
+              info += doer->printChoreDoer() + "\n";
+              if (!doer->assignedChores.empty())
+                info += displayAssignedChores(name);
+            }
+            else {
+              info = "Could not find specified chore doer";
+            }
+          }
+
+          return info;
+        }
+
+        // Sort all chore doers' assigned chores by earnings
+        void sortAllChoreDoersChoresByEarnings(bool ascending = true) const {
+          for (auto& doer : doers) {
+            doer->sortAssignedChoresByEarnings(ascending);
+          }
+          wxMessageBox("Sorted all chore doers' chores by earnings.", "Sort Info", wxOK | wxICON_INFORMATION);
+        }
+
+        // Sort all chore doers' assigned chores by difficulty
+        void sortAllChoreDoersChoresByDifficulty(bool ascending = true) const {
+          for (auto& doer : doers) {
+            doer->sortAssignedChoresByDifficulty(ascending);
+          }
+          wxMessageBox("Sorted all chore doers' chores by difficulty.", "Sort Info", wxOK | wxICON_INFORMATION);
+        }
+
+        // Sort all chore doers' assigned chores by ID
+        void sortAllChoreDoersChoresByID(bool ascending = true) const {
+          for (auto& doer : doers) {
+            doer->sortAssignedChoresByID(ascending);
+          }
+          wxMessageBox("Sorted all chore doers' chores by ID.", "Sort Info", wxOK | wxICON_INFORMATION);
         }
 
         // Method to load chore doers from the JSON file
         void addChoreDoer(const wxString& name, int age) {
-            auto doer = std::make_shared<ChoreDoer>(name, age);
+            auto doer = make_shared<ChoreDoer>(name, age);
             doers.push_back(doer);
         }
 
-        // Method to assign a chore to a ChoreDoer
+        // Method to delete a chore from the available chore list by ID
+        void deleteChoreFromAvailable(int choreId) {
+          chores.deleteItem(choreId);
+        }
+
+        // Method to delete a chore from any chore doer's assigned list by ID
+        void deleteChoreFromAnyDoer(int choreId) const {
+          for (auto& doer : doers) {
+            doer->assignedChores.deleteItem(choreId);
+          }
+        }
+
+        // Method to delete a chore doer from the system by name
+        void deleteChoreDoer(const wxString& name) {
+          try {
+            auto it = std::find_if(doers.begin(), doers.end(), [&name](const auto& doer) {
+              return doer->getName() == name;
+              });
+
+            if (it != doers.end()) {
+              doers.erase(it);
+              wxMessageBox(wxString("Chore doer removed successfully."), wxT("Info"), wxOK | wxICON_INFORMATION);
+            }
+            else {
+              wxMessageBox(wxString("Chore doer not found."), wxT("Info"), wxOK | wxICON_INFORMATION);
+            }
+          }
+          catch (const std::exception& e) {
+            wxMessageBox(wxString("Exception thrown in deleteChoreDoer: ") + wxString(e.what()), wxT("Error"), wxOK | wxICON_ERROR);
+          }
+        }
+       
+        // Method to manually assign a chore to a ChoreDoer
         void assignChoreDoer(int choreId, const wxString& doerName) {
             auto chore = find_if(chores.begin(), chores.end(), [choreId](const shared_ptr<Chore>& c) {
                 return c->getId() == choreId;
@@ -1120,31 +1568,94 @@ namespace ChoreAppNamespace {
             }
         }
 
-        // Method to display the ChoreDoer details
-        wxString displayAssignedChores(const wxString& doerName) {
-            auto doer = std::find_if(doers.begin(), doers.end(), [&doerName](const std::shared_ptr<ChoreDoer>& d) {
-                return d->name == doerName;
-                });
-
-            if (doer != doers.end()) {
-                return (*doer)->printChoreDoer();
+        // Randomly assigns all chosen chores to all doers
+        void assignChoresRandomly() {
+          try {
+            // Check if there are chores to assign
+            if (chores.empty()) {
+              wxMessageBox(wxT("No chores to assign."), wxT("Info"), wxOK | wxICON_INFORMATION);
+              return;
             }
 
-            return "Chore Doer not found.";
+            // Check if there are chore doers available
+            if (doers.empty()) {
+              wxMessageBox(wxT("No chore doers available."), wxT("Info"), wxOK | wxICON_INFORMATION);
+              return;
+            }
+
+            // Create a random engine; you could also use default_random_engine
+            random_device rd;
+            mt19937 g(rd());
+
+            // Shuffle the chores using the random engine
+            ranges::shuffle(chores.begin(), chores.end(), g);
+
+            size_t choreIndex = 0;
+            // Loop over each chore and try to assign it to a chore doer
+            while (choreIndex < chores.size()) {
+              for (auto& choreDoer : doers) {
+                if (choreIndex < chores.size()) {
+                  choreDoer->assignChore(chores[choreIndex++]);
+                }
+                else {
+                  break; // Break if there are no more chores to assign
+                }
+              }
+            }
+          }
+          catch (const exception& e) {
+            wxMessageBox(wxString("Exception thrown in assignChoresRandomly: ") + wxString(e.what()), wxT("Error"), wxOK | wxICON_ERROR);
+          }
         }
 
+        wxString displayChoreList() {
+          wxString info;
+          for (const auto& chore : chores) {
+            info += chore->simplePrint(); //Only returns few attributes instead of all attributes
+          }
+          return info;
+        }
 
-        // Method to add a new chore to the list
+        // Returns assigned chores for a chosen chore doer
+        wxString displayAssignedChores(const wxString& doerName) {
+          auto doer = find_if(doers.begin(), doers.end(), [&doerName](const shared_ptr<ChoreDoer>& d) {
+            return d->getName() == doerName;
+            });
+
+          if (doer != doers.end()) {
+            wxString info = "Chore Doer: " + (*doer)->getName() + " has chores:\n";
+            info += (*doer)->assignedChores.returnAllItems();  // Use Container's method
+            return info;
+          }
+
+          return wxT("Chore Doer not found.");
+        }
+
+        // Returns assigned chores for all chore doers
+        wxString displayAllChoreAssignments() const {
+          wxString info;
+          for (const auto& doer : doers) {
+            info += "Chore Doer: " + doer->getName() + " has chores:\n";
+            info += doer->assignedChores.returnAllItems();  // Use Container's method
+            info += "\n";  // Add a newline for separation between doers
+          }
+          return info;  // Return the complete string
+        }
+
+        // Method to add a new chore to the list - not implemented**
         void addChore(const json& choreJson) {
             shared_ptr<Chore> chore;
             if (!choreJson.is_null()) {
-              if (choreJson["difficulty"] == "easy") {
-                chore = make_shared<EasyChore>(choreJson);
-              }
-              else {
-
-              }
-                auto chore = std::make_shared<Chore>(choreJson);
+                if (choreJson["difficulty"] == "easy") {
+                  chore = make_shared<EasyChore>(choreJson);
+                }
+                else if(choreJson["difficulty"] == "medium") {
+                  chore = make_shared<MediumChore>(choreJson);
+                }
+                else if (choreJson["difficulty"] == "hard") {
+                  chore = make_shared<EasyChore>(choreJson);
+                }
+              
                 chores.push_back(chore);
                 saveData();  // Save every time a chore is added
             }
@@ -1152,26 +1663,33 @@ namespace ChoreAppNamespace {
                 wxMessageBox("Error adding chore: Invalid JSON", "JSON Error", wxOK | wxICON_ERROR);
             }
         }
-        // saveData method to save the data to the JSON file
+
+        // Output all data to the console or to file
+        json toJSON() const {
+          json output;
+          if (client) {
+            output["user_profile"] = client->toJSON();
+          }
+          
+          for (const auto& chore : chores) {
+            output["chores"].push_back(chore->toJSON());
+          }
+          return output;
+        }
+
+        // saveData method to overwrite the original data.json file for chores and user data
         void saveData() {
-            json j;
-            if (client) {
-                j["user_profile"] = {
-                    {"username", client->getUsername().ToStdString()},
-                    {"theme", client->getTheme().ToStdString()},
-                    {"notify", client->getNotify()}
-                };
-            }
+            // Reset our json object because json is getting overwritten
+            j.clear();
 
-            json choresJson = json::array();
-            for (const auto& chore : chores) {
-                choresJson.push_back(chore->toJSON());
-            }
-            j["chores"] = choresJson;
+            // All data changed through class functions modify or set(attribute) or add/create chore  will be saved here
+            // Add new data to json object with updated chore list
+            j = toJSON();
 
-            std::ofstream file(dynamicFile.ToStdString());
+            // Overwrites original file
+            ofstream file(dynamicFile.ToStdString());
             if (file) {
-                file << std::setw(4) << j << std::endl;
+                file << setw(4) << j << endl;
             }
             else {
                 wxMessageBox("Error saving file: " + dynamicFile, "File Error", wxOK | wxICON_ERROR);
@@ -1180,11 +1698,14 @@ namespace ChoreAppNamespace {
         }
 
         // Method to display the client profile
+        /* Do not need this function, we will have one user
         bool userExists(const wxString& username) {
             return j["user_profiles"].find(username.ToStdString()) != j["user_profiles"].end();
         }
-
+        */
+        
         // Method to create a new user profile
+        /*
         void createUser(const wxString& username, const wxString& theme, bool notify) {
             json newUser = {
                 {"username", username.ToStdString()},
@@ -1194,28 +1715,29 @@ namespace ChoreAppNamespace {
             j["user_profiles"][username.ToStdString()] = newUser;
             saveData();
         }
-
+        */
         // Method to update the user profile
         void updateUser(const wxString& username, const wxString& theme, bool notify) {
-            j["user_profiles"][username.ToStdString()] = {
-                {"username", username.ToStdString()},
-                {"theme", theme.ToStdString()},
-                {"notify", notify}
-            };
+            client->setUsername(username);
+            client->setTheme(theme);
+            client->setNotify(notify);
             saveData();
+            wxMessageBox("Welcome, " + client->getUserName() + "!", "Login Success", wxOK | wxICON_INFORMATION);
         }
 
         // don't think we need this
+        /*
         bool validateUser(wxString w, wxString z) {
             return true; // Placeholder for actual validation logic
         }
+        */
 
         // Method to display the chore list
         //******************************************************************
         //CHANGED DISPLAY CHORES TO WORK WITH WXWIDGETS (void function not allowed)
-        vector<shared_ptr<Chore>> displayChores()
+        Container<Chore> displayChores()
         {
-            vector<shared_ptr<Chore>> choreList;
+            Container<Chore> choreList;
             for (const auto& chore : chores)
             {
                 choreList.push_back(chore);
@@ -1392,6 +1914,25 @@ namespace ChoreAppNamespace {
             //SEARCH CHORES USED
         }
     }
+
+  /* Not sure how to implement this
+    // Example integration with a menu in MyFrame
+    void MyFrame::OnSortChores(wxCommandEvent& event) {
+      switch (event.GetId()) {
+      case ID_SORT_DOERS_EARNINGS:
+        choreManager.sortAllChoreDoersChoresByEarnings();
+        break;
+      case ID_SORT_DOERS_DIFFICULTY:
+        choreManager.sortAllChoreDoersChoresByDifficulty();
+        break;
+      case ID_SORT_DOERS_ID:
+        choreManager.sortAllChoreDoersChoresByID();
+        break;
+      default:
+        wxMessageBox("Invalid sort option.", "Error", wxOK | wxICON_ERROR);
+      }
+    }
+    */
     // Create the subclass of wxApp
     // ChoreApp serves as the application object
     class ChoreApp : public wxApp {
@@ -1408,7 +1949,7 @@ namespace ChoreAppNamespace {
             frame->Show(true);
             return true;
         }
-
+        
         // Update in ChoreApp to handle user login and new user creation
         class LoginDialog : public wxDialog {
         public:
@@ -1462,15 +2003,16 @@ namespace ChoreAppNamespace {
                 wxString username = m_usernameText->GetValue();
                 wxString theme = m_themeChoice->GetStringSelection();
                 bool notify = m_notifyCheckBox->IsChecked();
-
+                //We should only have one user (too much confusion)
+                /*
                 if (!m_choreManager->userExists(username)) {
                     m_choreManager->createUser(username, theme, notify);
                     wxMessageBox("New user created: " + username + ". Welcome to Chore Manager!", "User Created", wxOK | wxICON_INFORMATION);
                 }
-                else {
-                    m_choreManager->updateUser(username, theme, notify);
-                    wxMessageBox("Welcome back, " + username + "!", "Login Success", wxOK | wxICON_INFORMATION);
-                }
+                */
+                
+                m_choreManager->updateUser(username, theme, notify);
+                wxMessageBox("Welcome back, " + username + "!", "Login Success", wxOK | wxICON_INFORMATION);
 
                 // Close the dialog
                 EndModal(wxID_OK);

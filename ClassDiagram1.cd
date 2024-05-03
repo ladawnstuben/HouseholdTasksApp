@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" GroupingSetting="Access" MembersFormat="FullSignature">
+  <Class Name="ChoreAppNamespace::Client">
+    <Position X="9.5" Y="9.5" Width="5.25" />
+    <NestedTypes>
+      <Struct Name="ChoreAppNamespace::Client::Preferences" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>main.cpp</NewMemberFileName>
+        </TypeIdentifier>
+      </Struct>
+      <Struct Name="ChoreAppNamespace::Client::UserProfile" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>main.cpp</NewMemberFileName>
+        </TypeIdentifier>
+      </Struct>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAEQREAAACEQAAABAAAEAAAACAAAAAU=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::ClientDialog">
+    <Position X="20.5" Y="7.75" Width="3.25" />
+    <TypeIdentifier>
+      <HashCode>EAAAAiAACAAAAAEAAAAAAAAAAAAAAAAAAAIAAAAABAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::Chore">
+    <Position X="0.5" Y="0.5" Width="4.5" />
+    <Compartments>
+      <Compartment Name="Nested Types" Collapsed="false" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>Uw5IBBABAAYoCRIAYKAxBYACQKAkBADFQIDESGAIIgE=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::EasyChore">
+    <Position X="5.25" Y="0.5" Width="4" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAQQCAABAAAAAAAAAIAAAAABAAAACCAAQAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::MediumChore">
+    <Position X="5.25" Y="3.75" Width="4" />
+    <TypeIdentifier>
+      <HashCode>AAAAAQAAAAQACAAAAAAEQAAAAAAAAAABAEAACCAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::HardChore">
+    <Position X="5.25" Y="7" Width="4" />
+    <NestedTypes>
+      <Struct Name="ChoreAppNamespace::HardChore::Subtask" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>main.cpp</NewMemberFileName>
+        </TypeIdentifier>
+      </Struct>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>AAAAAACAAAQACAIAAAAAAAAAAAAAAAABACAAKCAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::Container&lt;T&gt;">
+    <Position X="15" Y="0.5" Width="7.75" />
+    <TypeIdentifier>
+      <HashCode>AEAAABACBAAAAAAAAIkAAAAyCgFAAAAAAQIAAAAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::ChoreDoer">
+    <Position X="5.25" Y="10.5" Width="4" />
+    <TypeIdentifier>
+      <HashCode>AAAAAgAAABQASCABACAAAAAEAAAEAAAAhABEACAABEA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::ChoreManager">
+    <Position X="9.5" Y="0.5" Width="5.25" />
+    <TypeIdentifier>
+      <HashCode>ABIAUJCggUCAAAAEGFFIIwAhAAABAAEIYAMAjBCAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::ChoresFrame">
+    <Position X="20.5" Y="10.5" Width="5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAABAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::MyFrame">
+    <Position X="20.5" Y="12.25" Width="5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAQAAAAAAAAAAAAACACAQAAIAAAAAAAAAASA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ChoreAppNamespace::ChoreApp">
+    <Position X="15.5" Y="10.75" Width="4.75" />
+    <Compartments>
+      <Compartment Name="Nested Types" Collapsed="false" />
+    </Compartments>
+    <NestedTypes>
+      <Class Name="ChoreAppNamespace::ChoreApp::LoginDialog">
+        <TypeIdentifier>
+          <NewMemberFileName>main.cpp</NewMemberFileName>
+        </TypeIdentifier>
+      </Class>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Struct Name="ChoreAppNamespace::CompareEarnings">
+    <Position X="15" Y="5.25" Width="5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Struct Name="ChoreAppNamespace::CompareDifficulty">
+    <Position X="15" Y="7.75" Width="5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Struct Name="ChoreAppNamespace::CompareID">
+    <Position X="15" Y="6.5" Width="5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Enum Name="ChoreAppNamespace::DIFFICULTY">
+    <Position X="18.5" Y="9" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAIAAgAAAAAAAAAAAAAAAAAAAAAAAAAQAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="ChoreAppNamespace::STATUS">
+    <Position X="15" Y="9" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>IQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="ChoreAppNamespace::PRIORITY">
+    <Position X="16.75" Y="9" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAEAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="ChoreAppNamespace::__unnamed_enum_0401_1">
+    <Position X="24" Y="9" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAABAAAAA=</HashCode>
+      <FileName>main.cpp</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

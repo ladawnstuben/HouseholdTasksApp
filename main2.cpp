@@ -1506,7 +1506,7 @@ namespace ChoreApp
       }
     }
   };
-
+}
   int main() {
     try {
       string testFile(DATA_FILE_PATH + "data.json");
