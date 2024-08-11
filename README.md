@@ -1,4 +1,4 @@
-# ITCS-2550-final-project
+# Household Tasks App
 ITCS 2550 Final C++ Project for Group 1
 
 # Household Tasks Manager - Project Overview
